@@ -62,3 +62,49 @@
 .seating-summary{display:flex;gap:12px;margin-bottom:18px}.seating-summary>div{background:white;border:1px solid var(--line);border-radius:16px;padding:14px 20px;min-width:120px}.seating-summary strong{display:block;font-size:24px}.seating-summary span{font-size:11px;color:var(--muted)}.seating-layout{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:20px;align-items:start}.room-canvas{background:#f4efe8;border:1px solid var(--line);border-radius:26px;min-height:600px;padding:26px;display:grid;grid-template-columns:repeat(2,minmax(240px,1fr));gap:20px;align-content:start}.seat-table{background:white;border:1px solid var(--line);padding:20px;box-shadow:var(--shadow)}.seat-table.round{border-radius:40px}.seat-table.rectangular{border-radius:16px}.seat-table.top{border-radius:12px;border-top:5px solid var(--ink)}.seat-table-head{display:flex;justify-content:space-between;gap:12px;align-items:start}.seat-table-head h3{font-size:24px;margin:5px 0 14px}.seat-count{font-size:12px;font-weight:900;background:var(--sand);padding:7px 9px;border-radius:999px}.seat-guests{display:grid;gap:7px;min-height:80px}.seat-person,.unseated-person{display:flex;justify-content:space-between;align-items:center;border:1px solid var(--line);border-radius:11px;padding:8px 10px;background:#fff}.unseated-person small{display:block;color:var(--muted);margin-top:2px}.empty-seats{padding:10px;border:1px dashed var(--line);border-radius:10px;color:var(--muted);font-size:12px;text-align:center}.seat-assign{display:grid;grid-template-columns:1fr auto;gap:8px;margin-top:14px}.unseated-panel{position:sticky;top:20px}.unseated-panel [data-unseated-list]{display:grid;gap:8px}.empty-state.compact{padding:18px}.danger-link{display:inline-block;color:var(--danger);margin-top:12px;font-size:11px}.budget-metrics{margin-bottom:18px}.budget-metrics .metric-value{font-size:29px}
 @media(max-width:1050px){.seating-layout{grid-template-columns:1fr}.unseated-panel{position:relative;top:auto}.room-canvas{grid-template-columns:1fr 1fr}}
 @media(max-width:700px){.room-canvas{grid-template-columns:1fr;padding:14px;min-height:auto}.seating-summary{display:grid;grid-template-columns:repeat(3,1fr)}.seating-summary>div{min-width:0;padding:12px}.seat-assign{grid-template-columns:1fr}.budget-metrics{grid-template-columns:1fr 1fr!important}}
+
+/* Stage 8.2 — sidebar polish */
+.sidebar{
+  padding-left:18px;
+  padding-right:18px;
+}
+.sidebar .brand{
+  padding-left:4px;
+}
+.side-nav{
+  padding-right:3px;
+}
+.side-link{
+  display:flex;
+  align-items:center;
+  min-height:42px;
+  padding:11px 14px;
+  border-radius:13px;
+  line-height:1.2;
+}
+.side-link.active{
+  background:rgba(255,255,255,.10);
+}
+.side-foot{
+  width:100%;
+  margin:10px auto 16px;
+  padding:14px 16px;
+  border-radius:16px;
+  text-align:left;
+  box-sizing:border-box;
+  background:rgba(255,255,255,.07);
+  border:1px solid rgba(255,255,255,.08);
+  line-height:1.35;
+}
+.side-foot strong{
+  font-size:12px;
+  letter-spacing:.01em;
+}
+.side-foot br + *{
+  font-size:11px;
+}
+@media(max-height:760px){
+  .sidebar{padding-left:14px;padding-right:14px}
+  .side-link{min-height:38px;padding:9px 12px}
+  .side-foot{margin-bottom:10px;padding:11px 12px;border-radius:13px}
+}
