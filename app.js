@@ -38,11 +38,11 @@ async function builder(){
   if(status){status.textContent='Saving…';status.className='publish-status saving'}
   try{
    const body={};fields.forEach(n=>body[n]=$(`[name=${n}]`).value);
-   const r=await api('/api/wedding',{method:'POST',body:JSON.stringify(body)});
+   const r=await api('/api/wedding',{method:'PUT',body:JSON.stringify(body)});
    const sb={theme,accent};
    ['hero_title','schedule','travel','faq','registry'].forEach(n=>sb[n]=$(`[name=${n}]`).value);
    ['show_story','show_schedule','show_travel','show_faq','show_registry'].forEach(n=>sb[n]=$(`[name=${n}]`).checked);
-   await api('/api/wedding/settings',{method:'POST',body:JSON.stringify(sb)});
+   await api('/api/wedding/settings',{method:'PUT',body:JSON.stringify(sb)});
    ME.wedding=r.wedding;
    $$('[data-public-link]').forEach(a=>a.href=`/w/${ME.wedding.slug}?v=${Date.now()}`);
    $('[data-qr]').src=`/api/wedding/qr.png?slug=${encodeURIComponent(ME.wedding.slug)}&t=${Date.now()}`;
