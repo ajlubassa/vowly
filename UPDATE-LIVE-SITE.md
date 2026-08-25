@@ -1,21 +1,18 @@
-# Vowly Stage 6.2 — publish route fix
+# Vowly Stage 7
 
-This fixes the red `Not found` error in Website Studio.
+Upload all files into your existing `ajlubassa/vowly` GitHub repository and replace the current files.
 
-Cause:
-- The backend save endpoints use HTTP PUT.
-- Stage 6/6.1 Website Studio was mistakenly sending POST.
+Commit message:
+`Vowly Stage 7 advanced RSVP`
 
-Also fixed:
-- Password-protected public RSVP now sends the correct password field.
+Railway will redeploy automatically.
 
-Deploy:
-1. Upload all Stage 6.2 files to the root of your existing `ajlubassa/vowly` GitHub repo.
-2. Replace the existing files.
-3. Commit: `Vowly Stage 6.2 publish route fix`
-4. Keep Railway `web-volume` mounted at `/data`.
-5. Wait for Railway to show Online.
-6. Refresh Website Studio with Ctrl + F5.
-7. Change a name or theme and press Publish changes.
-8. It should show `Published ✓`.
-9. Press Preview live ↗ and verify the change.
+Keep the existing `web-volume` mounted at `/data`.
+
+After Railway returns Online:
+1. Refresh with Ctrl + F5.
+2. Open Guests & RSVPs.
+3. Add a household.
+4. Open Events and add a second event.
+5. Open RSVP questions and add a custom question.
+6. Open the public wedding page and test the RSVP form.

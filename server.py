@@ -36,6 +36,11 @@ CREATE TABLE IF NOT EXISTS suppliers(id INTEGER PRIMARY KEY AUTOINCREMENT,name T
 CREATE TABLE IF NOT EXISTS supplier_leads(id INTEGER PRIMARY KEY AUTOINCREMENT,supplier_id INTEGER NOT NULL,wedding_id INTEGER NOT NULL,message TEXT NOT NULL,status TEXT NOT NULL DEFAULT 'new',created_at TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS payments(id INTEGER PRIMARY KEY AUTOINCREMENT,user_id INTEGER NOT NULL,plan TEXT NOT NULL,stripe_session_id TEXT UNIQUE,status TEXT NOT NULL,created_at TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS wedding_settings(wedding_id INTEGER PRIMARY KEY,theme TEXT NOT NULL DEFAULT 'editorial',accent TEXT NOT NULL DEFAULT 'sage',hero_title TEXT DEFAULT '',schedule TEXT DEFAULT '',travel TEXT DEFAULT '',faq TEXT DEFAULT '',registry TEXT DEFAULT '',show_story INTEGER DEFAULT 1,show_schedule INTEGER DEFAULT 1,show_travel INTEGER DEFAULT 1,show_faq INTEGER DEFAULT 1,show_registry INTEGER DEFAULT 1,FOREIGN KEY(wedding_id) REFERENCES weddings(id));
+CREATE TABLE IF NOT EXISTS households(id INTEGER PRIMARY KEY AUTOINCREMENT,wedding_id INTEGER NOT NULL,name TEXT NOT NULL,notes TEXT DEFAULT '',FOREIGN KEY(wedding_id) REFERENCES weddings(id));
+CREATE TABLE IF NOT EXISTS wedding_events(id INTEGER PRIMARY KEY AUTOINCREMENT,wedding_id INTEGER NOT NULL,name TEXT NOT NULL,event_date TEXT DEFAULT '',start_time TEXT DEFAULT '',venue TEXT DEFAULT '',description TEXT DEFAULT '',rsvp_deadline TEXT DEFAULT '',is_primary INTEGER DEFAULT 0,FOREIGN KEY(wedding_id) REFERENCES weddings(id));
+CREATE TABLE IF NOT EXISTS guest_event_invites(id INTEGER PRIMARY KEY AUTOINCREMENT,guest_id INTEGER NOT NULL,event_id INTEGER NOT NULL,invited INTEGER DEFAULT 1,rsvp TEXT DEFAULT 'pending',UNIQUE(guest_id,event_id),FOREIGN KEY(guest_id) REFERENCES guests(id),FOREIGN KEY(event_id) REFERENCES wedding_events(id));
+CREATE TABLE IF NOT EXISTS rsvp_questions(id INTEGER PRIMARY KEY AUTOINCREMENT,wedding_id INTEGER NOT NULL,prompt TEXT NOT NULL,question_type TEXT NOT NULL DEFAULT 'text',required INTEGER DEFAULT 0,options TEXT DEFAULT '',sort_order INTEGER DEFAULT 0,FOREIGN KEY(wedding_id) REFERENCES weddings(id));
+CREATE TABLE IF NOT EXISTS rsvp_answers(id INTEGER PRIMARY KEY AUTOINCREMENT,guest_id INTEGER NOT NULL,question_id INTEGER NOT NULL,answer TEXT DEFAULT '',UNIQUE(guest_id,question_id),FOREIGN KEY(guest_id) REFERENCES guests(id),FOREIGN KEY(question_id) REFERENCES rsvp_questions(id));
 '''
 
 def conn():
@@ -58,6 +63,9 @@ def unique_slug(c,base):
 def seed():
     with conn() as c:
         c.executescript(SCHEMA)
+        cols=[r['name'] for r in c.execute("PRAGMA table_info(guests)").fetchall()]
+        if 'household_id' not in cols:c.execute('ALTER TABLE guests ADD COLUMN household_id INTEGER')
+        if 'notes' not in cols:c.execute("ALTER TABLE guests ADD COLUMN notes TEXT DEFAULT ''")
         if not c.execute('SELECT 1 FROM users WHERE email=?',('demo@vowly.local',)).fetchone():
             now=datetime.now(timezone.utc).isoformat(); cur=c.execute('INSERT INTO users(email,password_hash,plan,created_at) VALUES(?,?,?,?)',('demo@vowly.local',pbkdf('demo123'),'free',now)); uid=cur.lastrowid
             w=c.execute('INSERT INTO weddings(user_id,partner1,partner2,date,venue,story,slug,password) VALUES(?,?,?,?,?,?,?,?)',(uid,'Amelia','Noah','2027-06-18','The Orangery, London','We met in London and cannot wait to celebrate this next chapter with our favourite people.','amelia-noah','')).lastrowid
@@ -69,6 +77,11 @@ def seed():
             rows=[('North & Pine Photo','Photography','London','Relaxed editorial wedding photography with full-day coverage.',1600,'supplier@example.com',1),('Bloom & Stem','Florist','London','Seasonal ceremony and reception florals.',850,'supplier@example.com',1),('Afterglow Films','Videography','London','Cinematic wedding films and highlight edits.',1450,'supplier@example.com',0),('The Vinyl Social','DJ','London','Open-format wedding DJ with lighting packages.',700,'supplier@example.com',0),('Sugar & Ivory','Cakes','London','Modern tiered wedding cakes and tasting boxes.',420,'supplier@example.com',0)]
             c.executemany('INSERT INTO suppliers(name,category,location,description,price_from,email,featured) VALUES(?,?,?,?,?,?,?)',rows)
         c.execute("INSERT OR IGNORE INTO wedding_settings(wedding_id) SELECT id FROM weddings")
+        for wr in c.execute('SELECT id,date,venue FROM weddings').fetchall():
+            if not c.execute('SELECT 1 FROM wedding_events WHERE wedding_id=?',(wr['id'],)).fetchone():
+                eid=c.execute('INSERT INTO wedding_events(wedding_id,name,event_date,start_time,venue,description,is_primary) VALUES(?,?,?,?,?,?,1)',(wr['id'],'Wedding day',wr['date'],'14:00',wr['venue'],'Ceremony and celebration')).lastrowid
+                for gr in c.execute('SELECT id FROM guests WHERE wedding_id=?',(wr['id'],)).fetchall():
+                    c.execute('INSERT OR IGNORE INTO guest_event_invites(guest_id,event_id,invited,rsvp) VALUES(?,?,1,(SELECT rsvp FROM guests WHERE id=?))',(gr['id'],eid,gr['id']))
 
 def json_bytes(x): return json.dumps(x,separators=(',',':')).encode()
 def send_resend(to,subject,html,idempotency=None):
@@ -162,9 +175,15 @@ class App(SimpleHTTPRequestHandler):
         if path=='/api/guests':
             a=self.require();
             if not a:return
-            with conn() as c: rows=[dict(x) for x in c.execute('SELECT * FROM guests WHERE wedding_id=? ORDER BY name',(a['id'],))]
-            for r in rows:r['plus_one']=bool(r['plus_one'])
-            return self.send_json(rows)
+            with conn() as c:
+                rows=[dict(x) for x in c.execute('SELECT g.*,h.name household_name FROM guests g LEFT JOIN households h ON h.id=g.household_id WHERE g.wedding_id=? ORDER BY g.name',(a['id'],))]
+                evs=[dict(x) for x in c.execute('SELECT * FROM wedding_events WHERE wedding_id=? ORDER BY event_date,start_time,id',(a['id'],))]
+                inv=[dict(x) for x in c.execute('SELECT gei.guest_id,gei.event_id,gei.invited,gei.rsvp FROM guest_event_invites gei JOIN guests g ON g.id=gei.guest_id WHERE g.wedding_id=?',(a['id'],))]
+            invite_map={}
+            for x in inv: invite_map.setdefault(x['guest_id'],[]).append(x)
+            for r in rows:
+                r['plus_one']=bool(r['plus_one']);r['events']=invite_map.get(r['id'],[])
+            return self.send_json({'guests':rows,'events':evs})
         if path=='/api/tasks':
             a=self.require();
             if not a:return
@@ -176,6 +195,22 @@ class App(SimpleHTTPRequestHandler):
             if not a:return
             with conn() as c: hist=[dict(x) for x in c.execute('SELECT recipient,subject,status,created_at FROM invitations WHERE wedding_id=? ORDER BY id DESC LIMIT 20',(a['id'],))]; guests=[dict(x) for x in c.execute('SELECT id,name,email,rsvp FROM guests WHERE wedding_id=? ORDER BY name',(a['id'],))]
             return self.send_json({'history':hist,'guests':guests,'email_live':bool(RESEND_API_KEY)})
+        if path=='/api/households':
+            a=self.require();
+            if not a:return
+            with conn() as c: rows=[dict(x) for x in c.execute('SELECT h.*,COUNT(g.id) guest_count FROM households h LEFT JOIN guests g ON g.household_id=h.id WHERE h.wedding_id=? GROUP BY h.id ORDER BY h.name',(a['id'],))]
+            return self.send_json(rows)
+        if path=='/api/events':
+            a=self.require();
+            if not a:return
+            with conn() as c: rows=[dict(x) for x in c.execute('SELECT * FROM wedding_events WHERE wedding_id=? ORDER BY event_date,start_time,id',(a['id'],))]
+            return self.send_json(rows)
+        if path=='/api/rsvp/questions':
+            a=self.require();
+            if not a:return
+            with conn() as c: rows=[dict(x) for x in c.execute('SELECT * FROM rsvp_questions WHERE wedding_id=? ORDER BY sort_order,id',(a['id'],))]
+            for r in rows:r['required']=bool(r['required'])
+            return self.send_json(rows)
         if path=='/api/suppliers':
             if not self.require():return
             with conn() as c: rows=[dict(x) for x in c.execute('SELECT * FROM suppliers ORDER BY featured DESC,name')]
@@ -187,7 +222,11 @@ class App(SimpleHTTPRequestHandler):
             if not r:return self.send_json({'error':'Wedding not found'},404)
             d=dict(r);d['password_required']=bool(d.pop('password'))
             with conn() as c: ws=c.execute('SELECT theme,accent,hero_title,schedule,travel,faq,registry,show_story,show_schedule,show_travel,show_faq,show_registry FROM wedding_settings WHERE wedding_id=(SELECT id FROM weddings WHERE slug=?)',(slug,)).fetchone()
-            d['settings']=dict(ws) if ws else {};return self.send_json(d)
+            d['settings']=dict(ws) if ws else {}
+            with conn() as c:
+                d['events']=[dict(x) for x in c.execute('SELECT id,name,event_date,start_time,venue,description,rsvp_deadline,is_primary FROM wedding_events WHERE wedding_id=(SELECT id FROM weddings WHERE slug=?) ORDER BY event_date,start_time,id',(slug,))]
+                d['questions']=[dict(x) for x in c.execute('SELECT id,prompt,question_type,required,options FROM rsvp_questions WHERE wedding_id=(SELECT id FROM weddings WHERE slug=?) ORDER BY sort_order,id',(slug,))]
+            return self.send_json(d)
         if path=='/api/wedding/settings':
             a=self.require();
             if not a:return
@@ -238,14 +277,45 @@ class App(SimpleHTTPRequestHandler):
             if not a:return
             d=self.body();name=str(d.get('name','')).strip();email=str(d.get('email','')).strip()
             if not name:return self.send_json({'error':'Guest name required'},400)
-            with conn() as c:cur=c.execute('INSERT INTO guests(wedding_id,name,email,group_name,plus_one,rsvp,dietary) VALUES(?,?,?,?,?,?,?)',(a['id'],name,email,d.get('group_name','Other'),1 if d.get('plus_one') else 0,'pending',''))
-            return self.send_json({'id':cur.lastrowid},201)
+            with conn() as c:
+                cur=c.execute('INSERT INTO guests(wedding_id,name,email,group_name,plus_one,rsvp,dietary,household_id,notes) VALUES(?,?,?,?,?,?,?,?,?)',(a['id'],name,email,d.get('group_name','Other'),1 if d.get('plus_one') else 0,'pending','',d.get('household_id') or None,str(d.get('notes',''))))
+                gid=cur.lastrowid
+                for ev in c.execute('SELECT id FROM wedding_events WHERE wedding_id=?',(a['id'],)).fetchall():c.execute('INSERT OR IGNORE INTO guest_event_invites(guest_id,event_id,invited,rsvp) VALUES(?,?,1,?)',(gid,ev['id'],'pending'))
+            return self.send_json({'id':gid},201)
         if path=='/api/tasks':
             a=self.require(csrf=True);
             if not a:return
             d=self.body();title=str(d.get('title','')).strip()
             if not title:return self.send_json({'error':'Task title required'},400)
             with conn() as c:cur=c.execute('INSERT INTO tasks(wedding_id,title,due,done) VALUES(?,?,?,0)',(a['id'],title,d.get('due','')))
+            return self.send_json({'id':cur.lastrowid},201)
+        if path=='/api/households':
+            a=self.require(csrf=True);
+            if not a:return
+            d=self.body();name=str(d.get('name','')).strip()
+            if not name:return self.send_json({'error':'Household name required'},400)
+            with conn() as c:cur=c.execute('INSERT INTO households(wedding_id,name,notes) VALUES(?,?,?)',(a['id'],name,str(d.get('notes',''))))
+            return self.send_json({'id':cur.lastrowid},201)
+        if path=='/api/events':
+            a=self.require(csrf=True);
+            if not a:return
+            d=self.body();name=str(d.get('name','')).strip()
+            if not name:return self.send_json({'error':'Event name required'},400)
+            with conn() as c:
+                cur=c.execute('INSERT INTO wedding_events(wedding_id,name,event_date,start_time,venue,description,rsvp_deadline,is_primary) VALUES(?,?,?,?,?,?,?,?)',(a['id'],name,d.get('event_date',''),d.get('start_time',''),str(d.get('venue','')),str(d.get('description','')),d.get('rsvp_deadline',''),1 if d.get('is_primary') else 0))
+                eid=cur.lastrowid
+                for g in c.execute('SELECT id FROM guests WHERE wedding_id=?',(a['id'],)).fetchall():c.execute('INSERT OR IGNORE INTO guest_event_invites(guest_id,event_id,invited,rsvp) VALUES(?,?,1,?)',(g['id'],eid,'pending'))
+            return self.send_json({'id':eid},201)
+        if path=='/api/rsvp/questions':
+            a=self.require(csrf=True);
+            if not a:return
+            d=self.body();prompt=str(d.get('prompt','')).strip()
+            if not prompt:return self.send_json({'error':'Question required'},400)
+            qtype=d.get('question_type','text')
+            if qtype not in ('text','yesno','choice'):qtype='text'
+            with conn() as c:
+                order=c.execute('SELECT COALESCE(MAX(sort_order),0)+1 FROM rsvp_questions WHERE wedding_id=?',(a['id'],)).fetchone()[0]
+                cur=c.execute('INSERT INTO rsvp_questions(wedding_id,prompt,question_type,required,options,sort_order) VALUES(?,?,?,?,?,?)',(a['id'],prompt,qtype,1 if d.get('required') else 0,str(d.get('options','')),order))
             return self.send_json({'id':cur.lastrowid},201)
         if path=='/api/billing/checkout':
             a=self.require(csrf=True);
@@ -346,6 +416,16 @@ class App(SimpleHTTPRequestHandler):
             except sqlite3.IntegrityError:return self.send_json({'error':'That wedding URL is already in use'},409)
             with conn() as c:w=dict(c.execute('SELECT * FROM weddings WHERE id=?',(a['id'],)).fetchone())
             return self.send_json({'wedding':w})
+        m=re.fullmatch(r'/api/guests/(\d+)',path)
+        if m:
+            a=self.require(csrf=True);
+            if not a:return
+            d=self.body();gid=int(m.group(1))
+            with conn() as c:
+                c.execute('UPDATE guests SET name=?,email=?,group_name=?,plus_one=?,household_id=?,notes=? WHERE id=? AND wedding_id=?',(str(d.get('name','')).strip(),str(d.get('email','')).strip(),d.get('group_name','Other'),1 if d.get('plus_one') else 0,d.get('household_id') or None,str(d.get('notes','')),gid,a['id']))
+                for x in d.get('events',[]):
+                    c.execute('INSERT INTO guest_event_invites(guest_id,event_id,invited,rsvp) VALUES(?,?,?,COALESCE((SELECT rsvp FROM guest_event_invites WHERE guest_id=? AND event_id=?),"pending")) ON CONFLICT(guest_id,event_id) DO UPDATE SET invited=excluded.invited',(gid,int(x['event_id']),1 if x.get('invited') else 0,gid,int(x['event_id'])))
+            return self.send_json({'ok':True})
         m=re.fullmatch(r'/api/tasks/(\d+)',path)
         if m:
             a=self.require(csrf=True);
@@ -370,4 +450,4 @@ class App(SimpleHTTPRequestHandler):
         self.send_header('Set-Cookie',cookie);self.end_headers();self.wfile.write(b)
 
 if __name__=='__main__':
-    seed(); os.chdir(ROOT); print(f'Vowly Stage 6.2 running on http://0.0.0.0:{PORT} | DB={DB} | BASE_URL={BASE_URL}'); ThreadingHTTPServer(('0.0.0.0',PORT),App).serve_forever()
+    seed(); os.chdir(ROOT); print(f'Vowly Stage 7 running on http://0.0.0.0:{PORT} | DB={DB} | BASE_URL={BASE_URL}'); ThreadingHTTPServer(('0.0.0.0',PORT),App).serve_forever()
