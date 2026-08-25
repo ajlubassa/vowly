@@ -210,3 +210,16 @@ async function budgetPage(){
 }
 
 (async()=>{try{await initCommon();const p=document.body.dataset.page;if(p==='dashboard')await dashboard();if(p==='builder')await builder();if(p==='guests')await guests();if(p==='events')await eventsPage();if(p==='questions')await questionsPage();if(p==='seating')await seatingPage();if(p==='budget')await budgetPage();if(p==='checklist')await checklist();if(p==='pricing')await pricing();if(p==='invitations')await invitations();if(p==='suppliers')await suppliers()}catch(e){console.error(e)}})();
+
+
+function initMobileNav(){
+ const sidebar=document.querySelector('.sidebar'), topbar=document.querySelector('.topbar');
+ if(!sidebar||!topbar)return;
+ let btn=document.querySelector('.mobile-nav-toggle');
+ if(!btn){btn=document.createElement('button');btn.type='button';btn.className='mobile-nav-toggle';btn.setAttribute('aria-label','Open navigation');btn.textContent='☰';const left=topbar.firstElementChild;left&&left.insertBefore(btn,left.firstChild)}
+ const backdrop=document.createElement('div');backdrop.className='mobile-nav-backdrop';document.body.appendChild(backdrop);
+ const close=()=>{document.body.classList.remove('nav-open');backdrop.classList.remove('open');btn.textContent='☰';btn.setAttribute('aria-label','Open navigation')};
+ btn.onclick=()=>{const open=!document.body.classList.contains('nav-open');document.body.classList.toggle('nav-open',open);backdrop.classList.toggle('open',open);btn.textContent=open?'×':'☰';btn.setAttribute('aria-label',open?'Close navigation':'Open navigation')};
+ backdrop.onclick=close;sidebar.querySelectorAll('a').forEach(a=>a.addEventListener('click',close));document.addEventListener('keydown',e=>{if(e.key==='Escape')close()});
+}
+document.addEventListener('DOMContentLoaded',initMobileNav);

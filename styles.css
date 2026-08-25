@@ -172,3 +172,19 @@
 .invite-metrics{grid-template-columns:repeat(4,1fr);margin-bottom:18px}.invite-layout{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(320px,.95fr);gap:18px}.invitation-compose .stack-form{margin-top:8px}.invitation-compose label{display:grid;gap:6px;font-size:12px;font-weight:700}.invite-preview{background:#faf8f5;border:1px solid var(--line);border-radius:14px;padding:14px}.copy-link{display:flex;gap:8px;margin-top:7px}.copy-link .input{min-width:0}.email-mode-note{font-size:11px;margin-top:12px}.invite-history{display:grid;gap:0}.invite-history-row{display:flex;justify-content:space-between;align-items:center;gap:14px;padding:12px 0;border-bottom:1px solid var(--line)}.invite-history-row:last-child{border-bottom:0}.invite-history-row strong,.invite-history-row span,.invite-history-row small{display:block}.invite-history-row>div:first-child span,.invite-history-row small{font-size:11px;color:var(--muted);margin-top:3px}.invite-history-row>div:last-child{text-align:right}
 @media(max-width:900px){.invite-layout{grid-template-columns:1fr}}
 @media(max-width:650px){.invite-metrics{grid-template-columns:1fr 1fr}.copy-link{flex-direction:column}.invite-history-row{align-items:flex-start}.invite-history-row>div:last-child{text-align:left}}
+
+
+/* Stage 13 — dashboard + overall UX polish */
+.dashboard-hero{background:linear-gradient(135deg,#fff 0%,#f8f1ea 55%,#eef2ed 100%);border:1px solid var(--line);border-radius:24px;padding:24px;margin-bottom:18px;box-shadow:var(--shadow)}
+.dashboard-hero .welcome{margin-bottom:20px}.quick-actions{display:flex;gap:9px;flex-wrap:wrap}.quick-actions a{background:rgba(255,255,255,.82);border:1px solid var(--line);border-radius:999px;padding:9px 13px;font-size:12px;font-weight:800}.quick-actions a:hover{background:#fff;transform:translateY(-1px)}
+.metric,.panel,.form-card,.table-card,.guest-card,.event-card,.question-card,.supplier-card{transition:box-shadow .18s ease,transform .18s ease}.metric:hover,.panel:hover{box-shadow:0 20px 55px rgba(45,35,25,.10)}
+.topbar{position:sticky;top:0;z-index:30;background:rgba(255,255,255,.94);backdrop-filter:blur(12px)}
+.mobile-nav-toggle{display:none;border:1px solid var(--line);background:white;border-radius:10px;width:40px;height:40px;align-items:center;justify-content:center;font-size:20px;cursor:pointer}.mobile-nav-backdrop{display:none}
+@media(max-width:900px){
+ .topbar>div:first-child{display:flex;align-items:center;gap:10px}.mobile-menu{display:none}.mobile-nav-toggle{display:inline-flex}
+ .sidebar{display:flex;position:fixed;left:0;top:0;bottom:0;width:min(300px,84vw);height:100dvh;z-index:80;transform:translateX(-105%);transition:transform .22s ease;box-shadow:20px 0 50px rgba(0,0,0,.18)}
+ body.nav-open .sidebar{transform:translateX(0)}.mobile-nav-backdrop{position:fixed;inset:0;background:rgba(24,21,19,.38);z-index:70}.mobile-nav-backdrop.open{display:block}
+ .app-content{padding:16px}.topbar{height:68px}.topbar h1{font-size:21px}.dashboard-hero{padding:18px;border-radius:20px}.welcome h2{font-size:29px}.quick-actions{display:grid;grid-template-columns:1fr 1fr}.quick-actions a{text-align:center}
+ .panel,.form-card{padding:18px}.site-actions .btn{padding:9px 12px;font-size:12px}.avatar{width:36px;height:36px}
+}
+@media(max-width:560px){.quick-actions{grid-template-columns:1fr}.dashboard-hero{margin-bottom:14px}.metric-grid,.dashboard-grid{gap:12px}.metric{padding:16px}.metric-value{font-size:30px}.site-actions{gap:7px}}
