@@ -74,20 +74,47 @@ async function questionsPage(){const rows=await api('/api/rsvp/questions'),list=
 async function checklist(){const ts=await api('/api/tasks'),done=ts.filter(t=>t.done).length,p=ts.length?Math.round(done/ts.length*100):0;$('[data-pct]').textContent=p+'% complete';$('[data-progressbar]').style.width=p+'%';$('[data-checklist]').innerHTML=ts.map(t=>`<div class="task ${t.done?'done':''}"><input data-task="${t.id}" type="checkbox" ${t.done?'checked':''}><label>${esc(t.title)}</label><small>${esc(t.due||'')}</small></div>`).join('');$$('[data-task]').forEach(c=>c.onchange=async()=>{await api(`/api/tasks/${c.dataset.task}`,{method:'PUT',body:JSON.stringify({done:c.checked})});await checklist()});$('[data-add-task]').onsubmit=async e=>{e.preventDefault();const f=new FormData(e.currentTarget);await api('/api/tasks',{method:'POST',body:JSON.stringify({title:f.get('task'),due:f.get('due')})});e.currentTarget.reset();await checklist()}}
 async function pricing(){$$('[data-upgrade]').forEach(b=>b.onclick=async()=>{const plan=b.dataset.upgrade;if(plan==='free'){toast('Free plan remains active');return}try{const d=await api('/api/billing/checkout',{method:'POST',body:JSON.stringify({plan})});if(d.url)location.href=d.url;else if(d.demo){toast(`${cap(plan)} activated in demo mode`);setTimeout(()=>location.reload(),700)}}catch(e){toast(e.message)}})}
 async function invitations(){const state=await api('/api/invitations');const list=$('[data-invite-history]')||$('[data-invitation-history]')||$('[data-history]');if(list)list.innerHTML=state.history.map(i=>`<div class="task"><span>✉</span><label><strong>${esc(i.subject)}</strong><br><small>${esc(i.recipient)}</small></label><small>${esc(i.status)}</small></div>`).join('')||'<p>No invitations sent yet.</p>';const sel=$('[data-guest-select]');if(sel)sel.innerHTML='<option value="">Choose a guest</option>'+state.guests.filter(g=>g.email).map(g=>`<option value="${g.id}">${esc(g.name)} — ${esc(g.email)}</option>`).join('');const form=$('[data-invite-form]')||$('form[data-invitation-form]');if(form)form.onsubmit=async e=>{e.preventDefault();const f=new FormData(form);const d=await api('/api/invitations/send',{method:'POST',body:JSON.stringify(Object.fromEntries(f))});toast(d.sent?'Invitation sent':'Invitation recorded in preview mode');setTimeout(()=>location.reload(),700)};const rb=$('[data-send-reminders]')||$('[data-remind]');if(rb)rb.onclick=async()=>{const d=await api('/api/reminders/send',{method:'POST',body:'{}'});toast(`${d.count} reminder${d.count===1?'':'s'} processed`);const out=$('[data-reminder-result]');if(out)out.textContent=state.email_live?`${d.sent} email reminder(s) delivered.`:`${d.count} reminder(s) recorded in preview mode.`}}
-async function suppliers(){const data=await api('/api/suppliers');const root=$('[data-suppliers]')||$('.supplier-grid');if(!root)return;root.innerHTML=data.map(s=>`<article class="supplier-card ${s.featured?'featured':''}"><span class="eyebrow">${s.featured?'Featured · ':''}${esc(s.category)}</span><h3>${esc(s.name)}</h3><p>${esc(s.description)}</p><div class="supplier-meta">${esc(s.location)} · From £${s.price_from}</div><form class="lead-form" data-lead="${s.id}"><input class="input" name="message" required placeholder="Tell them what you need"><button class="btn btn-primary" style="width:100%;margin-top:8px">Request quote</button></form></article>`).join('');$$('[data-lead]').forEach(f=>f.onsubmit=async e=>{e.preventDefault();const d=await api(`/api/suppliers/${f.dataset.lead}/leads`,{method:'POST',body:JSON.stringify({message:new FormData(f).get('message')})});toast(d.emailed?'Enquiry sent to supplier':'Enquiry saved — supplier email is in preview mode');f.reset()})}
+async function suppliers(){
+ const data=await api('/api/suppliers'),root=$('[data-suppliers]');
+ if(!root)return;
+ const search=$('[data-supplier-search]'),category=$('[data-supplier-category]');
+ const cats=[...new Set(data.map(s=>s.category).filter(Boolean))].sort();
+ category.innerHTML='<option value="">All categories</option>'+cats.map(c=>`<option>${esc(c)}</option>`).join('');
 
-async function seatingPage(){
- const d=await api('/api/seating'),tables=d.tables||[],guests=d.guests||[];
- const byTable={};guests.forEach(g=>{if(g.assignment)(byTable[g.assignment.table_id]||(byTable[g.assignment.table_id]=[])).push(g)});
- const seated=guests.filter(g=>g.assignment).length,unseated=guests.filter(g=>!g.assignment);
- $('[data-seated]').textContent=seated;$('[data-unseated]').textContent=unseated.length;$('[data-unseated-pill]').textContent=unseated.length;$('[data-seat-capacity]').textContent=tables.reduce((a,t)=>a+Number(t.capacity||0),0);
- const grid=$('[data-table-grid]');
- grid.innerHTML=tables.map(t=>{const gs=byTable[t.id]||[],free=Math.max(0,t.capacity-gs.length);return `<article class="seat-table ${t.shape}"><div class="seat-table-head"><div><span class="eyebrow">${esc(t.shape)}</span><h3>${esc(t.name)}</h3></div><span class="seat-count">${gs.length}/${t.capacity}</span></div><div class="seat-guests">${gs.map(g=>`<div class="seat-person"><span>${esc(g.name)}</span><button class="icon-btn" data-unseat="${g.id}" title="Remove from table">×</button></div>`).join('')}${free?`<div class="empty-seats">${free} seat${free===1?'':'s'} free</div>`:''}</div><div class="seat-assign"><select class="input" data-assign-select="${t.id}"><option value="">Assign a guest…</option>${unseated.map(g=>`<option value="${g.id}">${esc(g.name)}</option>`).join('')}</select><button class="btn btn-secondary" data-assign="${t.id}">Add</button></div><button class="text-link danger-link" data-delete-table="${t.id}">Delete table</button></article>`}).join('')||'<div class="empty-state">Create your first table to start seating guests.</div>';
- $('[data-unseated-list]').innerHTML=unseated.map(g=>`<div class="unseated-person"><div><strong>${esc(g.name)}</strong><small>${esc(g.group_name||'')}</small></div></div>`).join('')||'<div class="empty-state compact">Everyone has a seat.</div>';
- $$('[data-assign]').forEach(b=>b.onclick=async()=>{const sel=$(`[data-assign-select="${b.dataset.assign}"]`);if(!sel.value)return toast('Choose a guest');try{await api('/api/seating/assign',{method:'POST',body:JSON.stringify({guest_id:Number(sel.value),table_id:Number(b.dataset.assign)})});location.reload()}catch(e){toast(e.message)}});
- $$('[data-unseat]').forEach(b=>b.onclick=async()=>{await api('/api/seating/assignments/'+b.dataset.unseat,{method:'DELETE'});location.reload()});
- $$('[data-delete-table]').forEach(b=>b.onclick=async()=>{if(confirm('Delete this table? Guests will become unseated.')){await api('/api/seating/tables/'+b.dataset.deleteTable,{method:'DELETE'});location.reload()}});
- const modal=$('[data-table-modal]');$('[data-add-table]').onclick=()=>modal.classList.add('open');$('[data-close-table]').onclick=()=>modal.classList.remove('open');modal.onclick=e=>{if(e.target===modal)modal.classList.remove('open')};$('[data-table-form]').onsubmit=async e=>{e.preventDefault();const f=new FormData(e.currentTarget);await api('/api/seating/tables',{method:'POST',body:JSON.stringify(Object.fromEntries(f.entries()))});location.reload()}
+ const modal=$('[data-supplier-budget-modal]'),budgetForm=$('[data-supplier-budget-form]');
+ let chosen=null;
+ const openBudget=s=>{
+   chosen=s;budgetForm.reset();
+   budgetForm.elements.name.value=s.category+' — '+s.name;
+   budgetForm.elements.category.value=s.category||'Other';
+   budgetForm.elements.supplier.value=s.name;
+   budgetForm.elements.planned.value=s.price_from||'';
+   budgetForm.elements.notes.value='Supplier listing: '+s.name;
+   modal.classList.add('open');
+ };
+ $('[data-close-supplier-budget]').onclick=()=>modal.classList.remove('open');
+ modal.onclick=e=>{if(e.target===modal)modal.classList.remove('open')};
+ budgetForm.onsubmit=async e=>{
+   e.preventDefault();
+   const body=Object.fromEntries(new FormData(budgetForm).entries());
+   await api('/api/budget',{method:'POST',body:JSON.stringify(body)});
+   modal.classList.remove('open');toast('Supplier added to your budget');
+ };
+
+ const draw=()=>{
+   const q=(search.value||'').trim().toLowerCase(),c=category.value;
+   const rows=data.filter(s=>(!q||[s.name,s.category,s.location,s.description].join(' ').toLowerCase().includes(q))&&(!c||s.category===c));
+   root.innerHTML=rows.length?rows.map(s=>`<article class="supplier-card ${s.featured?'featured':''}">
+     <div class="supplier-card-top"><span class="eyebrow">${s.featured?'Featured · ':''}${esc(s.category)}</span><span class="supplier-price">From ${money(s.price_from)}</span></div>
+     <h3>${esc(s.name)}</h3><p>${esc(s.description)}</p>
+     <div class="supplier-meta">${esc(s.location)}</div>
+     <div class="supplier-actions"><button class="btn btn-secondary" data-budget-supplier="${s.id}">Add to budget</button></div>
+     <form class="lead-form" data-lead="${s.id}"><input class="input" name="message" required placeholder="Tell them what you need"><button class="btn btn-primary" style="width:100%;margin-top:8px">Request quote</button></form>
+   </article>`).join(''):'<div class="empty-state">No suppliers match your search.</div>';
+   $$('[data-budget-supplier]').forEach(b=>b.onclick=()=>openBudget(data.find(s=>s.id===Number(b.dataset.budgetSupplier))));
+   $$('[data-lead]').forEach(f=>f.onsubmit=async e=>{e.preventDefault();const d=await api(`/api/suppliers/${f.dataset.lead}/leads`,{method:'POST',body:JSON.stringify({message:new FormData(f).get('message')})});toast(d.emailed?'Enquiry sent to supplier':'Enquiry saved — supplier email is in preview mode');f.reset()});
+ };
+ search.oninput=draw;category.onchange=draw;draw();
 }
 const money=n=>'£'+Number(n||0).toLocaleString('en-GB',{minimumFractionDigits:0,maximumFractionDigits:2});
 async function budgetPage(){

@@ -1,17 +1,19 @@
-# Vowly Stage 9.3 — Budget responsive polish
+# Vowly Stage 10 — Suppliers upgrade
 
-This update removes the wide horizontally-scrolling expense table and replaces it with responsive expense cards.
+Stage 10 improves the supplier workflow:
+- Supplier search now works
+- Category filter now works
+- Cleaner supplier cards and pricing
+- Request quote remains available
+- New Add to budget action
+- Supplier name/category/starting price are prefilled
+- Quote/actual cost, paid amount, status, due date and notes can be recorded
+- Saving creates the expense in the existing Budget section
+- Responsive mobile styling
 
-Benefits:
-- Fits laptop screens much better
-- Easier to read on phones
-- Keeps Edit/Delete
-- Keeps payment status, due dates and supplier details
-- Keeps search and category filters
-
-Deploy to the same GitHub repo and replace current files.
+Deploy these files over the existing GitHub repo.
 
 Commit:
-`Vowly Stage 9.3 responsive budget`
+`Vowly Stage 10 suppliers upgrade`
 
-Keep the Railway `/data` volume mounted. Wait for Online, then press Ctrl + F5 once.
+Keep the Railway `/data` volume unchanged. Wait until Railway is Online, then press Ctrl + F5 once.
