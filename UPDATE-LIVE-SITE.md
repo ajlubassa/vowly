@@ -1,18 +1,18 @@
-# Vowly Stage 7.1
+# Vowly Stage 7.2 — sidebar fix
 
-Fixes the blank/broken Events and RSVP Questions pages.
+This patch fixes the Free plan box covering lower navigation options.
 
-Upload all files to your existing `ajlubassa/vowly` GitHub repository and replace the current files.
+What changed:
+- Sidebar uses a proper vertical flex layout.
+- Navigation scrolls independently when the screen is short.
+- Free plan box stays at the bottom and no longer overlaps links.
+- Plan box becomes more compact on shorter screens.
 
-Commit:
-`Vowly Stage 7.1 layout and routing fix`
-
-Keep the Railway `web-volume` mounted at `/data`.
-
-After Railway is Online:
-1. Open Vowly.
-2. Press Ctrl + F5 once.
-3. Open Events.
-4. Open RSVP Questions.
-
-Both pages should now render their full main content.
+Deploy:
+1. Upload all Stage 7.2 files to the root of your existing `ajlubassa/vowly` GitHub repository.
+2. Replace the current files.
+3. Commit:
+   `Vowly Stage 7.2 sidebar fix`
+4. Keep Railway `web-volume` mounted at `/data`.
+5. Wait for Railway to show Online.
+6. Open Vowly and press Ctrl + F5 once.
