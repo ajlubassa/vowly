@@ -35,6 +35,7 @@ CREATE TABLE IF NOT EXISTS invitations(id INTEGER PRIMARY KEY AUTOINCREMENT,wedd
 CREATE TABLE IF NOT EXISTS suppliers(id INTEGER PRIMARY KEY AUTOINCREMENT,name TEXT NOT NULL,category TEXT NOT NULL,location TEXT NOT NULL,description TEXT NOT NULL,price_from INTEGER DEFAULT 0,email TEXT DEFAULT '',featured INTEGER DEFAULT 0);
 CREATE TABLE IF NOT EXISTS supplier_leads(id INTEGER PRIMARY KEY AUTOINCREMENT,supplier_id INTEGER NOT NULL,wedding_id INTEGER NOT NULL,message TEXT NOT NULL,status TEXT NOT NULL DEFAULT 'new',created_at TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS payments(id INTEGER PRIMARY KEY AUTOINCREMENT,user_id INTEGER NOT NULL,plan TEXT NOT NULL,stripe_session_id TEXT UNIQUE,status TEXT NOT NULL,created_at TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS wedding_settings(wedding_id INTEGER PRIMARY KEY,theme TEXT NOT NULL DEFAULT 'editorial',accent TEXT NOT NULL DEFAULT 'sage',hero_title TEXT DEFAULT '',schedule TEXT DEFAULT '',travel TEXT DEFAULT '',faq TEXT DEFAULT '',registry TEXT DEFAULT '',show_story INTEGER DEFAULT 1,show_schedule INTEGER DEFAULT 1,show_travel INTEGER DEFAULT 1,show_faq INTEGER DEFAULT 1,show_registry INTEGER DEFAULT 1,FOREIGN KEY(wedding_id) REFERENCES weddings(id));
 '''
 
 def conn():
@@ -67,6 +68,7 @@ def seed():
         if c.execute('SELECT COUNT(*) FROM suppliers').fetchone()[0]==0:
             rows=[('North & Pine Photo','Photography','London','Relaxed editorial wedding photography with full-day coverage.',1600,'supplier@example.com',1),('Bloom & Stem','Florist','London','Seasonal ceremony and reception florals.',850,'supplier@example.com',1),('Afterglow Films','Videography','London','Cinematic wedding films and highlight edits.',1450,'supplier@example.com',0),('The Vinyl Social','DJ','London','Open-format wedding DJ with lighting packages.',700,'supplier@example.com',0),('Sugar & Ivory','Cakes','London','Modern tiered wedding cakes and tasting boxes.',420,'supplier@example.com',0)]
             c.executemany('INSERT INTO suppliers(name,category,location,description,price_from,email,featured) VALUES(?,?,?,?,?,?,?)',rows)
+        c.execute("INSERT OR IGNORE INTO wedding_settings(wedding_id) SELECT id FROM weddings")
 
 def json_bytes(x): return json.dumps(x,separators=(',',':')).encode()
 def send_resend(to,subject,html,idempotency=None):
@@ -146,7 +148,9 @@ class App(SimpleHTTPRequestHandler):
             if not a:return
             with conn() as c:
                 gs=c.execute('SELECT rsvp,COUNT(*) n FROM guests WHERE wedding_id=? GROUP BY rsvp',(a['id'],)).fetchall(); counts={r['rsvp']:r['n'] for r in gs}; total=sum(counts.values()); ts=[dict(x) for x in c.execute('SELECT * FROM tasks WHERE wedding_id=? ORDER BY id',(a['id'],))]; done=sum(x['done'] for x in ts); progress=round(done/len(ts)*100) if ts else 0
-            return self.send_json({'wedding':{k:a[k] for k in ('partner1','partner2','date','venue','story','slug')},'stats':{'total':total,'yes':counts.get('yes',0),'pending':counts.get('pending',0),'no':counts.get('no',0),'progress':progress},'tasks':ts})
+            
+            with conn() as c: ws=c.execute('SELECT * FROM wedding_settings WHERE wedding_id=?',(a['id'],)).fetchone()
+            return self.send_json({'wedding':{k:a[k] for k in ('partner1','partner2','date','venue','story','slug')},'settings':dict(ws) if ws else {},'stats':{'total':total,'yes':counts.get('yes',0),'pending':counts.get('pending',0),'no':counts.get('no',0),'progress':progress},'tasks':ts})
         if path=='/api/guests':
             a=self.require();
             if not a:return
@@ -173,7 +177,15 @@ class App(SimpleHTTPRequestHandler):
             slug=urllib.parse.unquote(path.split('/')[-1]);
             with conn() as c:r=c.execute('SELECT partner1,partner2,date,venue,story,password FROM weddings WHERE slug=?',(slug,)).fetchone()
             if not r:return self.send_json({'error':'Wedding not found'},404)
-            d=dict(r);d['password_required']=bool(d.pop('password'));return self.send_json(d)
+            d=dict(r);d['password_required']=bool(d.pop('password'))
+            with conn() as c: ws=c.execute('SELECT theme,accent,hero_title,schedule,travel,faq,registry,show_story,show_schedule,show_travel,show_faq,show_registry FROM wedding_settings WHERE wedding_id=(SELECT id FROM weddings WHERE slug=?)',(slug,)).fetchone()
+            d['settings']=dict(ws) if ws else {};return self.send_json(d)
+        if path=='/api/wedding/settings':
+            a=self.require();
+            if not a:return
+            with conn() as c:
+                c.execute('INSERT OR IGNORE INTO wedding_settings(wedding_id) VALUES(?)',(a['id'],));r=c.execute('SELECT * FROM wedding_settings WHERE wedding_id=?',(a['id'],)).fetchone()
+            return self.send_json(dict(r))
         if path=='/api/wedding/qr.png':
             a=self.require();
             if not a:return
@@ -308,6 +320,15 @@ class App(SimpleHTTPRequestHandler):
         return self.send_json({'error':'Not found'},404)
     def do_PUT(self):
         path=urllib.parse.urlparse(self.path).path
+        if path=='/api/wedding/settings':
+            a=self.require(csrf=True);
+            if not a:return
+            d=self.body(); allowed_themes=('editorial','romantic','modern'); allowed_accents=('sage','rose','blue','plum')
+            theme=d.get('theme','editorial') if d.get('theme','editorial') in allowed_themes else 'editorial';accent=d.get('accent','sage') if d.get('accent','sage') in allowed_accents else 'sage'
+            vals=(theme,accent,str(d.get('hero_title',''))[:120],str(d.get('schedule',''))[:3000],str(d.get('travel',''))[:3000],str(d.get('faq',''))[:3000],str(d.get('registry',''))[:3000],1 if d.get('show_story',True) else 0,1 if d.get('show_schedule',True) else 0,1 if d.get('show_travel',True) else 0,1 if d.get('show_faq',True) else 0,1 if d.get('show_registry',True) else 0,a['id'])
+            with conn() as c:
+                c.execute('INSERT OR IGNORE INTO wedding_settings(wedding_id) VALUES(?)',(a['id'],));c.execute('UPDATE wedding_settings SET theme=?,accent=?,hero_title=?,schedule=?,travel=?,faq=?,registry=?,show_story=?,show_schedule=?,show_travel=?,show_faq=?,show_registry=? WHERE wedding_id=?',vals)
+            return self.send_json({'ok':True})
         if path=='/api/wedding':
             a=self.require(csrf=True);
             if not a:return
@@ -341,4 +362,4 @@ class App(SimpleHTTPRequestHandler):
         self.send_header('Set-Cookie',cookie);self.end_headers();self.wfile.write(b)
 
 if __name__=='__main__':
-    seed(); os.chdir(ROOT); print(f'Vowly Stage 5 running on http://0.0.0.0:{PORT} | DB={DB} | BASE_URL={BASE_URL}'); ThreadingHTTPServer(('0.0.0.0',PORT),App).serve_forever()
+    seed(); os.chdir(ROOT); print(f'Vowly Stage 6 running on http://0.0.0.0:{PORT} | DB={DB} | BASE_URL={BASE_URL}'); ThreadingHTTPServer(('0.0.0.0',PORT),App).serve_forever()
