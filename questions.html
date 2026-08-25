@@ -1,1 +1,53 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>RSVP Questions — Vowly</title><link rel="stylesheet" href="styles.css?v=7"></head><body class="app-body" data-page="questions"><div class="app-shell"><aside class="sidebar"><a class="brand" href="/"><span class="brand-mark">V</span>Vowly</a><nav class="side-nav"><a class="side-link" href="dashboard.html">⌂ Dashboard</a><a class="side-link" href="builder.html">♡ Website studio</a><a class="side-link" href="guests.html">◎ Guests & RSVPs</a><a class="side-link" href="events.html">◷ Events</a><a class="side-link active" href="questions.html">? RSVP questions</a><a class="side-link" href="invitations.html">✉ Invitations</a></nav><main class="app-main"><header class="topbar"><div><span class="eyebrow">Custom RSVP</span><h1>Questions</h1></div></header><div class="app-content page-grid"><div class="form-card"><h3>Add a question</h3><form data-question-form><div class="form-group"><label>Question</label><input required class="input" name="prompt" placeholder="Which meal would you prefer?"></div><div class="form-group"><label>Answer type</label><select class="input" name="question_type"><option value="text">Text</option><option value="yesno">Yes / No</option><option value="choice">Multiple choice</option></select></div><div class="form-group"><label>Options <span class="muted">(comma-separated)</span></label><input class="input" name="options" placeholder="Chicken, Fish, Vegetarian"></div><label><input type="checkbox" name="required"> Required</label><button class="btn btn-primary" style="width:100%;margin-top:18px">Add question</button></form></div><div><div class="question-list" data-question-list></div></div></div></main></div><script src="app.js?v=7"></script></body></html>
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>RSVP Questions — Vowly</title>
+  <link rel="stylesheet" href="styles.css?v=7.1">
+</head>
+<body class="app-body" data-page="questions">
+<div class="app-shell">
+  <aside class="sidebar">
+    <a class="brand" href="/"><span class="brand-mark">V</span>Vowly</a>
+    <nav class="side-nav">
+      <a class="side-link" href="dashboard.html">⌂ Dashboard</a>
+      <a class="side-link" href="builder.html">♡ Website studio</a>
+      <a class="side-link" href="guests.html">◎ Guests & RSVPs</a>
+      <a class="side-link" href="events.html">◷ Events</a>
+      <a class="side-link active" href="questions.html">? RSVP questions</a>
+      <a class="side-link" href="invitations.html">✉ Invitations</a>
+      <a class="side-link" href="checklist.html">☑ Checklist</a>
+      <a class="side-link" href="suppliers.html">◇ Suppliers</a>
+      <a class="side-link" href="pricing.html">♢ Plans</a>
+    </nav>
+    <div class="side-foot"><strong>Custom RSVP</strong><br>Ask the questions you actually need answered.</div>
+  </aside>
+
+  <main class="app-main">
+    <header class="topbar">
+      <div><span class="eyebrow">Custom RSVP</span><h1>RSVP questions</h1></div>
+      <button class="btn btn-secondary" data-logout>Log out</button>
+    </header>
+
+    <div class="app-content">
+      <div class="page-grid questions-layout">
+        <section class="form-card">
+          <h3>Add a question</h3>
+          <form data-question-form>
+            <div class="form-group"><label>Question</label><input required class="input" name="prompt" placeholder="Which meal would you prefer?"></div>
+            <div class="form-group"><label>Answer type</label><select class="input" name="question_type"><option value="text">Text</option><option value="yesno">Yes / No</option><option value="choice">Multiple choice</option></select></div>
+            <div class="form-group"><label>Options <span class="muted">(comma-separated)</span></label><input class="input" name="options" placeholder="Chicken, Fish, Vegetarian"></div>
+            <label><input type="checkbox" name="required"> Required</label>
+            <button class="btn btn-primary" style="width:100%;margin-top:18px">Add question</button>
+          </form>
+        </section>
+
+        <section><div class="question-list" data-question-list></div></section>
+      </div>
+    </div>
+  </main>
+</div>
+<script src="app.js?v=7.1"></script>
+</body>
+</html>

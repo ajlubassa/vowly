@@ -1,1 +1,61 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Events — Vowly</title><link rel="stylesheet" href="styles.css?v=7"></head><body class="app-body" data-page="events"><div class="app-shell"><aside class="sidebar"><a class="brand" href="/"><span class="brand-mark">V</span>Vowly</a><nav class="side-nav"><a class="side-link" href="dashboard.html">⌂ Dashboard</a><a class="side-link" href="builder.html">♡ Website studio</a><a class="side-link" href="guests.html">◎ Guests & RSVPs</a><a class="side-link active" href="events.html">◷ Events</a><a class="side-link" href="questions.html">? RSVP questions</a><a class="side-link" href="invitations.html">✉ Invitations</a><a class="side-link" href="checklist.html">☑ Checklist</a></nav><main class="app-main"><header class="topbar"><div><span class="eyebrow">Multiple events</span><h1>Wedding events</h1></div><button class="btn btn-primary" data-add-event>+ Add event</button></header><div class="app-content"><div class="event-grid" data-event-list></div><div class="form-card" data-event-form-wrap hidden><h3>Add event</h3><form data-event-form><div class="two-col"><div class="form-group"><label>Name</label><input required class="input" name="name" placeholder="Welcome dinner"></div><div class="form-group"><label>Date</label><input type="date" class="input" name="event_date"></div></div><div class="two-col"><div class="form-group"><label>Start time</label><input type="time" class="input" name="start_time"></div><div class="form-group"><label>RSVP deadline</label><input type="date" class="input" name="rsvp_deadline"></div></div><div class="form-group"><label>Venue</label><input class="input" name="venue"></div><div class="form-group"><label>Description</label><textarea class="input" name="description"></textarea></div><label><input type="checkbox" name="is_primary"> Main wedding event</label><button class="btn btn-primary" style="margin-top:18px">Save event</button></form></div></div></main></div><script src="app.js?v=7"></script></body></html>
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Events — Vowly</title>
+  <link rel="stylesheet" href="styles.css?v=7.1">
+</head>
+<body class="app-body" data-page="events">
+<div class="app-shell">
+  <aside class="sidebar">
+    <a class="brand" href="/"><span class="brand-mark">V</span>Vowly</a>
+    <nav class="side-nav">
+      <a class="side-link" href="dashboard.html">⌂ Dashboard</a>
+      <a class="side-link" href="builder.html">♡ Website studio</a>
+      <a class="side-link" href="guests.html">◎ Guests & RSVPs</a>
+      <a class="side-link active" href="events.html">◷ Events</a>
+      <a class="side-link" href="questions.html">? RSVP questions</a>
+      <a class="side-link" href="invitations.html">✉ Invitations</a>
+      <a class="side-link" href="checklist.html">☑ Checklist</a>
+      <a class="side-link" href="suppliers.html">◇ Suppliers</a>
+      <a class="side-link" href="pricing.html">♢ Plans</a>
+    </nav>
+    <div class="side-foot"><strong>Multiple events</strong><br>Create ceremony, reception and extra celebrations.</div>
+  </aside>
+
+  <main class="app-main">
+    <header class="topbar">
+      <div><span class="eyebrow">Multiple events</span><h1>Wedding events</h1></div>
+      <div class="site-actions">
+        <button class="btn btn-secondary" data-logout>Log out</button>
+        <button class="btn btn-primary" type="button" data-add-event>+ Add event</button>
+      </div>
+    </header>
+
+    <div class="app-content">
+      <div class="event-grid" data-event-list></div>
+
+      <section class="form-card" data-event-form-wrap hidden style="margin-top:20px">
+        <div class="panel-head"><h3>Add event</h3><button type="button" class="icon-btn" data-cancel-event>×</button></div>
+        <form data-event-form>
+          <div class="two-col">
+            <div class="form-group"><label>Name</label><input required class="input" name="name" placeholder="Welcome dinner"></div>
+            <div class="form-group"><label>Date</label><input type="date" class="input" name="event_date"></div>
+          </div>
+          <div class="two-col">
+            <div class="form-group"><label>Start time</label><input type="time" class="input" name="start_time"></div>
+            <div class="form-group"><label>RSVP deadline</label><input type="date" class="input" name="rsvp_deadline"></div>
+          </div>
+          <div class="form-group"><label>Venue</label><input class="input" name="venue"></div>
+          <div class="form-group"><label>Description</label><textarea class="input" name="description"></textarea></div>
+          <label><input type="checkbox" name="is_primary"> Main wedding event</label>
+          <button class="btn btn-primary" style="margin-top:18px">Save event</button>
+        </form>
+      </section>
+    </div>
+  </main>
+</div>
+<script src="app.js?v=7.1"></script>
+</body>
+</html>

@@ -1,18 +1,18 @@
-# Vowly Stage 7
+# Vowly Stage 7.1
 
-Upload all files into your existing `ajlubassa/vowly` GitHub repository and replace the current files.
+Fixes the blank/broken Events and RSVP Questions pages.
 
-Commit message:
-`Vowly Stage 7 advanced RSVP`
+Upload all files to your existing `ajlubassa/vowly` GitHub repository and replace the current files.
 
-Railway will redeploy automatically.
+Commit:
+`Vowly Stage 7.1 layout and routing fix`
 
-Keep the existing `web-volume` mounted at `/data`.
+Keep the Railway `web-volume` mounted at `/data`.
 
-After Railway returns Online:
-1. Refresh with Ctrl + F5.
-2. Open Guests & RSVPs.
-3. Add a household.
-4. Open Events and add a second event.
-5. Open RSVP questions and add a custom question.
-6. Open the public wedding page and test the RSVP form.
+After Railway is Online:
+1. Open Vowly.
+2. Press Ctrl + F5 once.
+3. Open Events.
+4. Open RSVP Questions.
+
+Both pages should now render their full main content.
