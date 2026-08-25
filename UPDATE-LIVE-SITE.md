@@ -1,18 +1,17 @@
-# Vowly Stage 7.2 — sidebar fix
+# Vowly Stage 8 — Planning Suite
 
-This patch fixes the Free plan box covering lower navigation options.
-
-What changed:
-- Sidebar uses a proper vertical flex layout.
-- Navigation scrolls independently when the screen is short.
-- Free plan box stays at the bottom and no longer overlaps links.
-- Plan box becomes more compact on shorter screens.
+New:
+- Seating plan
+- Budget tracker
 
 Deploy:
-1. Upload all Stage 7.2 files to the root of your existing `ajlubassa/vowly` GitHub repository.
-2. Replace the current files.
+1. Upload all Stage 8 files to your existing `ajlubassa/vowly` GitHub repository.
+2. Replace existing files.
 3. Commit:
-   `Vowly Stage 7.2 sidebar fix`
-4. Keep Railway `web-volume` mounted at `/data`.
-5. Wait for Railway to show Online.
+   `Vowly Stage 8 planning suite`
+4. Keep the Railway `web-volume` mounted at `/data`.
+5. Wait until Railway is Online.
 6. Open Vowly and press Ctrl + F5 once.
+7. Open Seating plan and Budget from the sidebar.
+
+Existing users, guests, RSVPs, website settings and events remain in the same persistent database.

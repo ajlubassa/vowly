@@ -41,6 +41,9 @@ CREATE TABLE IF NOT EXISTS wedding_events(id INTEGER PRIMARY KEY AUTOINCREMENT,w
 CREATE TABLE IF NOT EXISTS guest_event_invites(id INTEGER PRIMARY KEY AUTOINCREMENT,guest_id INTEGER NOT NULL,event_id INTEGER NOT NULL,invited INTEGER DEFAULT 1,rsvp TEXT DEFAULT 'pending',UNIQUE(guest_id,event_id),FOREIGN KEY(guest_id) REFERENCES guests(id),FOREIGN KEY(event_id) REFERENCES wedding_events(id));
 CREATE TABLE IF NOT EXISTS rsvp_questions(id INTEGER PRIMARY KEY AUTOINCREMENT,wedding_id INTEGER NOT NULL,prompt TEXT NOT NULL,question_type TEXT NOT NULL DEFAULT 'text',required INTEGER DEFAULT 0,options TEXT DEFAULT '',sort_order INTEGER DEFAULT 0,FOREIGN KEY(wedding_id) REFERENCES weddings(id));
 CREATE TABLE IF NOT EXISTS rsvp_answers(id INTEGER PRIMARY KEY AUTOINCREMENT,guest_id INTEGER NOT NULL,question_id INTEGER NOT NULL,answer TEXT DEFAULT '',UNIQUE(guest_id,question_id),FOREIGN KEY(guest_id) REFERENCES guests(id),FOREIGN KEY(question_id) REFERENCES rsvp_questions(id));
+CREATE TABLE IF NOT EXISTS seating_tables(id INTEGER PRIMARY KEY AUTOINCREMENT,wedding_id INTEGER NOT NULL,name TEXT NOT NULL,capacity INTEGER NOT NULL DEFAULT 8,shape TEXT NOT NULL DEFAULT 'round',sort_order INTEGER DEFAULT 0,FOREIGN KEY(wedding_id) REFERENCES weddings(id));
+CREATE TABLE IF NOT EXISTS seating_assignments(id INTEGER PRIMARY KEY AUTOINCREMENT,wedding_id INTEGER NOT NULL,guest_id INTEGER UNIQUE NOT NULL,table_id INTEGER NOT NULL,seat_number INTEGER DEFAULT 0,FOREIGN KEY(wedding_id) REFERENCES weddings(id),FOREIGN KEY(guest_id) REFERENCES guests(id),FOREIGN KEY(table_id) REFERENCES seating_tables(id));
+CREATE TABLE IF NOT EXISTS budget_items(id INTEGER PRIMARY KEY AUTOINCREMENT,wedding_id INTEGER NOT NULL,category TEXT NOT NULL,name TEXT NOT NULL,planned REAL DEFAULT 0,actual REAL DEFAULT 0,paid REAL DEFAULT 0,due_date TEXT DEFAULT '',supplier TEXT DEFAULT '',notes TEXT DEFAULT '',FOREIGN KEY(wedding_id) REFERENCES weddings(id));
 '''
 
 def conn():
@@ -82,6 +85,16 @@ def seed():
                 eid=c.execute('INSERT INTO wedding_events(wedding_id,name,event_date,start_time,venue,description,is_primary) VALUES(?,?,?,?,?,?,1)',(wr['id'],'Wedding day',wr['date'],'14:00',wr['venue'],'Ceremony and celebration')).lastrowid
                 for gr in c.execute('SELECT id FROM guests WHERE wedding_id=?',(wr['id'],)).fetchall():
                     c.execute('INSERT OR IGNORE INTO guest_event_invites(guest_id,event_id,invited,rsvp) VALUES(?,?,1,(SELECT rsvp FROM guests WHERE id=?))',(gr['id'],eid,gr['id']))
+
+        for wr in c.execute('SELECT id FROM weddings').fetchall():
+            if not c.execute('SELECT 1 FROM seating_tables WHERE wedding_id=?',(wr['id'],)).fetchone():
+                c.execute('INSERT INTO seating_tables(wedding_id,name,capacity,shape,sort_order) VALUES(?,?,?,?,?)',(wr['id'],'Table 1',8,'round',1))
+            if not c.execute('SELECT 1 FROM budget_items WHERE wedding_id=?',(wr['id'],)).fetchone():
+                c.executemany('INSERT INTO budget_items(wedding_id,category,name,planned,actual,paid,due_date,supplier,notes) VALUES(?,?,?,?,?,?,?,?,?)',[
+                    (wr['id'],'Venue','Venue & catering',8000,0,0,'','',''),
+                    (wr['id'],'Photography','Photographer',1800,0,0,'','',''),
+                    (wr['id'],'Flowers','Florals & décor',1200,0,0,'','','')
+                ])
 
 def json_bytes(x): return json.dumps(x,separators=(',',':')).encode()
 def send_resend(to,subject,html,idempotency=None):
@@ -211,6 +224,23 @@ class App(SimpleHTTPRequestHandler):
             with conn() as c: rows=[dict(x) for x in c.execute('SELECT * FROM rsvp_questions WHERE wedding_id=? ORDER BY sort_order,id',(a['id'],))]
             for r in rows:r['required']=bool(r['required'])
             return self.send_json(rows)
+        if path=='/api/seating':
+            a=self.require();
+            if not a:return
+            with conn() as c:
+                tables=[dict(x) for x in c.execute('SELECT * FROM seating_tables WHERE wedding_id=? ORDER BY sort_order,id',(a['id'],))]
+                guests=[dict(x) for x in c.execute('SELECT id,name,email,group_name,rsvp FROM guests WHERE wedding_id=? ORDER BY name',(a['id'],))]
+                assignments=[dict(x) for x in c.execute('SELECT sa.guest_id,sa.table_id,sa.seat_number FROM seating_assignments sa WHERE sa.wedding_id=?',(a['id'],))]
+            amap={x['guest_id']:x for x in assignments}
+            for g in guests:g['assignment']=amap.get(g['id'])
+            return self.send_json({'tables':tables,'guests':guests})
+        if path=='/api/budget':
+            a=self.require();
+            if not a:return
+            with conn() as c: rows=[dict(x) for x in c.execute('SELECT * FROM budget_items WHERE wedding_id=? ORDER BY category,name,id',(a['id'],))]
+            totals={'planned':sum(float(x['planned'] or 0) for x in rows),'actual':sum(float(x['actual'] or 0) for x in rows),'paid':sum(float(x['paid'] or 0) for x in rows)}
+            totals['remaining']=totals['actual']-totals['paid']
+            return self.send_json({'items':rows,'totals':totals})
         if path=='/api/suppliers':
             if not self.require():return
             with conn() as c: rows=[dict(x) for x in c.execute('SELECT * FROM suppliers ORDER BY featured DESC,name')]
@@ -317,6 +347,43 @@ class App(SimpleHTTPRequestHandler):
                 order=c.execute('SELECT COALESCE(MAX(sort_order),0)+1 FROM rsvp_questions WHERE wedding_id=?',(a['id'],)).fetchone()[0]
                 cur=c.execute('INSERT INTO rsvp_questions(wedding_id,prompt,question_type,required,options,sort_order) VALUES(?,?,?,?,?,?)',(a['id'],prompt,qtype,1 if d.get('required') else 0,str(d.get('options','')),order))
             return self.send_json({'id':cur.lastrowid},201)
+        if path=='/api/seating/tables':
+            a=self.require(csrf=True);
+            if not a:return
+            d=self.body();name=str(d.get('name','')).strip()
+            if not name:return self.send_json({'error':'Table name required'},400)
+            try:cap=max(1,min(30,int(d.get('capacity',8))))
+            except:cap=8
+            shape=d.get('shape','round')
+            if shape not in ('round','rectangular','top'):shape='round'
+            with conn() as c:
+                order=c.execute('SELECT COALESCE(MAX(sort_order),0)+1 FROM seating_tables WHERE wedding_id=?',(a['id'],)).fetchone()[0]
+                cur=c.execute('INSERT INTO seating_tables(wedding_id,name,capacity,shape,sort_order) VALUES(?,?,?,?,?)',(a['id'],name,cap,shape,order))
+            return self.send_json({'id':cur.lastrowid},201)
+        if path=='/api/seating/assign':
+            a=self.require(csrf=True);
+            if not a:return
+            d=self.body()
+            try:gid=int(d.get('guest_id'));tid=int(d.get('table_id'))
+            except:return self.send_json({'error':'Choose a guest and table'},400)
+            with conn() as c:
+                g=c.execute('SELECT 1 FROM guests WHERE id=? AND wedding_id=?',(gid,a['id'])).fetchone()
+                t=c.execute('SELECT capacity FROM seating_tables WHERE id=? AND wedding_id=?',(tid,a['id'])).fetchone()
+                if not g or not t:return self.send_json({'error':'Guest or table not found'},404)
+                count=c.execute('SELECT COUNT(*) FROM seating_assignments WHERE table_id=? AND guest_id<>?',(tid,gid)).fetchone()[0]
+                if count>=t['capacity']:return self.send_json({'error':'That table is full'},409)
+                c.execute('INSERT INTO seating_assignments(wedding_id,guest_id,table_id,seat_number) VALUES(?,?,?,0) ON CONFLICT(guest_id) DO UPDATE SET table_id=excluded.table_id,wedding_id=excluded.wedding_id',(a['id'],gid,tid))
+            return self.send_json({'ok':True})
+        if path=='/api/budget':
+            a=self.require(csrf=True);
+            if not a:return
+            d=self.body();name=str(d.get('name','')).strip();category=str(d.get('category','Other')).strip() or 'Other'
+            if not name:return self.send_json({'error':'Budget item name required'},400)
+            def num(v):
+                try:return max(0,float(v or 0))
+                except:return 0
+            with conn() as c:cur=c.execute('INSERT INTO budget_items(wedding_id,category,name,planned,actual,paid,due_date,supplier,notes) VALUES(?,?,?,?,?,?,?,?,?)',(a['id'],category,name,num(d.get('planned')),num(d.get('actual')),num(d.get('paid')),str(d.get('due_date','')),str(d.get('supplier','')),str(d.get('notes',''))))
+            return self.send_json({'id':cur.lastrowid},201)
         if path=='/api/billing/checkout':
             a=self.require(csrf=True);
             if not a:return
@@ -416,6 +483,27 @@ class App(SimpleHTTPRequestHandler):
             except sqlite3.IntegrityError:return self.send_json({'error':'That wedding URL is already in use'},409)
             with conn() as c:w=dict(c.execute('SELECT * FROM weddings WHERE id=?',(a['id'],)).fetchone())
             return self.send_json({'wedding':w})
+        m=re.fullmatch(r'/api/seating/tables/(\d+)',path)
+        if m:
+            a=self.require(csrf=True);
+            if not a:return
+            d=self.body();tid=int(m.group(1))
+            try:cap=max(1,min(30,int(d.get('capacity',8))))
+            except:cap=8
+            shape=d.get('shape','round')
+            if shape not in ('round','rectangular','top'):shape='round'
+            with conn() as c:c.execute('UPDATE seating_tables SET name=?,capacity=?,shape=? WHERE id=? AND wedding_id=?',(str(d.get('name','')).strip() or 'Table',cap,shape,tid,a['id']))
+            return self.send_json({'ok':True})
+        m=re.fullmatch(r'/api/budget/(\d+)',path)
+        if m:
+            a=self.require(csrf=True);
+            if not a:return
+            d=self.body();bid=int(m.group(1))
+            def num(v):
+                try:return max(0,float(v or 0))
+                except:return 0
+            with conn() as c:c.execute('UPDATE budget_items SET category=?,name=?,planned=?,actual=?,paid=?,due_date=?,supplier=?,notes=? WHERE id=? AND wedding_id=?',(str(d.get('category','Other')),str(d.get('name','')).strip(),num(d.get('planned')),num(d.get('actual')),num(d.get('paid')),str(d.get('due_date','')),str(d.get('supplier','')),str(d.get('notes','')),bid,a['id']))
+            return self.send_json({'ok':True})
         m=re.fullmatch(r'/api/guests/(\d+)',path)
         if m:
             a=self.require(csrf=True);
@@ -435,7 +523,29 @@ class App(SimpleHTTPRequestHandler):
             return self.send_json({'ok':True})
         return self.send_json({'error':'Not found'},404)
     def do_DELETE(self):
-        path=urllib.parse.urlparse(self.path).path;m=re.fullmatch(r'/api/guests/(\d+)',path)
+        path=urllib.parse.urlparse(self.path).path
+        m=re.fullmatch(r'/api/seating/assignments/(\d+)',path)
+        if m:
+            a=self.require(csrf=True);
+            if not a:return
+            with conn() as c:c.execute('DELETE FROM seating_assignments WHERE guest_id=? AND wedding_id=?',(int(m.group(1)),a['id']))
+            return self.send_json({'ok':True})
+        m=re.fullmatch(r'/api/seating/tables/(\d+)',path)
+        if m:
+            a=self.require(csrf=True);
+            if not a:return
+            tid=int(m.group(1))
+            with conn() as c:
+                c.execute('DELETE FROM seating_assignments WHERE table_id=? AND wedding_id=?',(tid,a['id']))
+                c.execute('DELETE FROM seating_tables WHERE id=? AND wedding_id=?',(tid,a['id']))
+            return self.send_json({'ok':True})
+        m=re.fullmatch(r'/api/budget/(\d+)',path)
+        if m:
+            a=self.require(csrf=True);
+            if not a:return
+            with conn() as c:c.execute('DELETE FROM budget_items WHERE id=? AND wedding_id=?',(int(m.group(1)),a['id']))
+            return self.send_json({'ok':True})
+        m=re.fullmatch(r'/api/guests/(\d+)',path)
         if m:
             a=self.require(csrf=True);
             if not a:return
@@ -450,4 +560,4 @@ class App(SimpleHTTPRequestHandler):
         self.send_header('Set-Cookie',cookie);self.end_headers();self.wfile.write(b)
 
 if __name__=='__main__':
-    seed(); os.chdir(ROOT); print(f'Vowly Stage 7.2 running on http://0.0.0.0:{PORT} | DB={DB} | BASE_URL={BASE_URL}'); ThreadingHTTPServer(('0.0.0.0',PORT),App).serve_forever()
+    seed(); os.chdir(ROOT); print(f'Vowly Stage 8 running on http://0.0.0.0:{PORT} | DB={DB} | BASE_URL={BASE_URL}'); ThreadingHTTPServer(('0.0.0.0',PORT),App).serve_forever()
