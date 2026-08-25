@@ -92,12 +92,54 @@ async function seatingPage(){
 const money=n=>'£'+Number(n||0).toLocaleString('en-GB',{minimumFractionDigits:0,maximumFractionDigits:2});
 async function budgetPage(){
  const d=await api('/api/budget'),rows=d.items||[],t=d.totals||{};
- $('[data-budget-planned]').textContent=money(t.planned);$('[data-budget-actual]').textContent=money(t.actual);$('[data-budget-paid]').textContent=money(t.paid);$('[data-budget-remaining]').textContent=money(t.remaining);
- const cats=[...new Set(rows.map(x=>x.category).filter(Boolean))].sort(),cat=$('[data-budget-category]');cat.innerHTML='<option value="">All categories</option>'+cats.map(c=>`<option>${esc(c)}</option>`).join('');
+ $('[data-budget-total]').textContent=money(t.budget);
+ $('[data-budget-planned]').textContent=money(t.planned);
+ $('[data-budget-actual]').textContent=money(t.actual);
+ $('[data-budget-paid]').textContent=money(t.paid);
+ $('[data-budget-remaining]').textContent=money(t.remaining);
+ $('[data-budget-progress]').style.width=Math.min(100,Number(t.percent||0))+'%';
+ $('[data-budget-progress-label]').textContent=`${t.percent||0}% committed`;
+ $('[data-budget-remaining-copy]').textContent=`${money(t.remaining)} remaining`;
+
+ const cats=[...new Set(rows.map(x=>x.category).filter(Boolean))].sort(),cat=$('[data-budget-category]');
+ cat.innerHTML='<option value="">All categories</option>'+cats.map(c=>`<option>${esc(c)}</option>`).join('');
  const search=$('[data-budget-search]'),tb=$('tbody');
- const draw=()=>{const q=(search.value||'').toLowerCase(),c=cat.value;tb.innerHTML=rows.filter(x=>(!q||[x.name,x.category,x.supplier,x.notes].join(' ').toLowerCase().includes(q))&&(!c||x.category===c)).map(x=>`<tr><td><strong>${esc(x.name)}</strong>${x.notes?`<small>${esc(x.notes)}</small>`:''}</td><td>${esc(x.category)}</td><td>${money(x.planned)}</td><td>${money(x.actual)}</td><td>${money(x.paid)}</td><td>${esc(x.due_date||'—')}</td><td>${esc(x.supplier||'—')}</td><td><button class="icon-btn" data-delete-budget="${x.id}">×</button></td></tr>`).join('');$$('[data-delete-budget]').forEach(b=>b.onclick=async()=>{if(confirm('Delete this budget item?')){await api('/api/budget/'+b.dataset.deleteBudget,{method:'DELETE'});location.reload()}})};
+
+ const draw=()=>{
+  const q=(search.value||'').toLowerCase(),c=cat.value;
+  tb.innerHTML=rows.filter(x=>(!q||[x.name,x.category,x.supplier,x.notes].join(' ').toLowerCase().includes(q))&&(!c||x.category===c)).map(x=>`<tr>
+   <td><strong>${esc(x.name)}</strong>${x.notes?`<small>${esc(x.notes)}</small>`:''}</td>
+   <td>${esc(x.category)}</td><td>${money(x.planned)}</td><td>${money(x.actual)}</td><td>${money(x.paid)}</td>
+   <td>${esc(x.due_date||'—')}</td><td>${esc(x.supplier||'—')}</td>
+   <td><button class="icon-btn" data-delete-budget="${x.id}">×</button></td></tr>`).join('')||'<tr><td colspan="8"><div class="empty-table">No expenses yet. Add your first expense.</div></td></tr>';
+  $$('[data-delete-budget]').forEach(b=>b.onclick=async()=>{if(confirm('Delete this expense?')){await api('/api/budget/'+b.dataset.deleteBudget,{method:'DELETE'});location.reload()}});
+ };
  search.oninput=draw;cat.onchange=draw;draw();
- const modal=$('[data-budget-modal]');$('[data-open-budget]').onclick=()=>modal.classList.add('open');$('[data-close-budget]').onclick=()=>modal.classList.remove('open');modal.onclick=e=>{if(e.target===modal)modal.classList.remove('open')};$('[data-budget-form]').onsubmit=async e=>{e.preventDefault();const f=new FormData(e.currentTarget);await api('/api/budget',{method:'POST',body:JSON.stringify(Object.fromEntries(f.entries()))});location.reload()}
+
+ const expenseModal=$('[data-budget-modal]');
+ $('[data-open-budget]').onclick=()=>expenseModal.classList.add('open');
+ $('[data-close-budget]').onclick=()=>expenseModal.classList.remove('open');
+ expenseModal.onclick=e=>{if(e.target===expenseModal)expenseModal.classList.remove('open')};
+ $('[data-budget-form]').onsubmit=async e=>{
+  e.preventDefault();
+  const f=new FormData(e.currentTarget);
+  await api('/api/budget',{method:'POST',body:JSON.stringify(Object.fromEntries(f.entries()))});
+  location.reload();
+ };
+
+ const totalModal=$('[data-total-budget-modal]');
+ $('[data-edit-budget]').onclick=()=>{
+  $('[name=total_budget]').value=t.budget||0;
+  totalModal.classList.add('open');
+ };
+ $('[data-close-total-budget]').onclick=()=>totalModal.classList.remove('open');
+ totalModal.onclick=e=>{if(e.target===totalModal)totalModal.classList.remove('open')};
+ $('[data-total-budget-form]').onsubmit=async e=>{
+  e.preventDefault();
+  const f=new FormData(e.currentTarget);
+  await api('/api/budget/settings',{method:'PUT',body:JSON.stringify({total_budget:f.get('total_budget')})});
+  location.reload();
+ };
 }
 
 (async()=>{try{await initCommon();const p=document.body.dataset.page;if(p==='dashboard')await dashboard();if(p==='builder')await builder();if(p==='guests')await guests();if(p==='events')await eventsPage();if(p==='questions')await questionsPage();if(p==='seating')await seatingPage();if(p==='budget')await budgetPage();if(p==='checklist')await checklist();if(p==='pricing')await pricing();if(p==='invitations')await invitations();if(p==='suppliers')await suppliers()}catch(e){console.error(e)}})();

@@ -44,6 +44,7 @@ CREATE TABLE IF NOT EXISTS rsvp_answers(id INTEGER PRIMARY KEY AUTOINCREMENT,gue
 CREATE TABLE IF NOT EXISTS seating_tables(id INTEGER PRIMARY KEY AUTOINCREMENT,wedding_id INTEGER NOT NULL,name TEXT NOT NULL,capacity INTEGER NOT NULL DEFAULT 8,shape TEXT NOT NULL DEFAULT 'round',sort_order INTEGER DEFAULT 0,FOREIGN KEY(wedding_id) REFERENCES weddings(id));
 CREATE TABLE IF NOT EXISTS seating_assignments(id INTEGER PRIMARY KEY AUTOINCREMENT,wedding_id INTEGER NOT NULL,guest_id INTEGER UNIQUE NOT NULL,table_id INTEGER NOT NULL,seat_number INTEGER DEFAULT 0,FOREIGN KEY(wedding_id) REFERENCES weddings(id),FOREIGN KEY(guest_id) REFERENCES guests(id),FOREIGN KEY(table_id) REFERENCES seating_tables(id));
 CREATE TABLE IF NOT EXISTS budget_items(id INTEGER PRIMARY KEY AUTOINCREMENT,wedding_id INTEGER NOT NULL,category TEXT NOT NULL,name TEXT NOT NULL,planned REAL DEFAULT 0,actual REAL DEFAULT 0,paid REAL DEFAULT 0,due_date TEXT DEFAULT '',supplier TEXT DEFAULT '',notes TEXT DEFAULT '',FOREIGN KEY(wedding_id) REFERENCES weddings(id));
+CREATE TABLE IF NOT EXISTS budget_settings(wedding_id INTEGER PRIMARY KEY,total_budget REAL DEFAULT 25000,FOREIGN KEY(wedding_id) REFERENCES weddings(id));
 '''
 
 def conn():
@@ -95,6 +96,9 @@ def seed():
                     (wr['id'],'Photography','Photographer',1800,0,0,'','',''),
                     (wr['id'],'Flowers','Florals & décor',1200,0,0,'','','')
                 ])
+
+        for wr in c.execute('SELECT id FROM weddings').fetchall():
+            c.execute('INSERT OR IGNORE INTO budget_settings(wedding_id,total_budget) VALUES(?,25000)',(wr['id'],))
 
 def json_bytes(x): return json.dumps(x,separators=(',',':')).encode()
 def send_resend(to,subject,html,idempotency=None):
@@ -237,10 +241,21 @@ class App(SimpleHTTPRequestHandler):
         if path=='/api/budget':
             a=self.require();
             if not a:return
-            with conn() as c: rows=[dict(x) for x in c.execute('SELECT * FROM budget_items WHERE wedding_id=? ORDER BY category,name,id',(a['id'],))]
-            totals={'planned':sum(float(x['planned'] or 0) for x in rows),'actual':sum(float(x['actual'] or 0) for x in rows),'paid':sum(float(x['paid'] or 0) for x in rows)}
-            totals['remaining']=totals['actual']-totals['paid']
-            return self.send_json({'items':rows,'totals':totals})
+            with conn() as c:
+                rows=[dict(x) for x in c.execute('SELECT * FROM budget_items WHERE wedding_id=? ORDER BY category,name,id',(a['id'],))]
+                s=c.execute('SELECT total_budget FROM budget_settings WHERE wedding_id=?',(a['id'],)).fetchone()
+                if not s:
+                    c.execute('INSERT OR IGNORE INTO budget_settings(wedding_id,total_budget) VALUES(?,25000)',(a['id'],))
+                    total_budget=25000.0
+                else: total_budget=float(s['total_budget'] or 0)
+            planned=sum(float(x['planned'] or 0) for x in rows)
+            actual=sum(float(x['actual'] or 0) for x in rows)
+            paid=sum(float(x['paid'] or 0) for x in rows)
+            committed=actual if actual>0 else planned
+            remaining=max(0,total_budget-committed)
+            outstanding=max(0,actual-paid)
+            percent=round((committed/total_budget)*100) if total_budget>0 else 0
+            return self.send_json({'items':rows,'totals':{'budget':total_budget,'planned':planned,'actual':actual,'paid':paid,'remaining':remaining,'outstanding':outstanding,'percent':percent}})
         if path=='/api/suppliers':
             if not self.require():return
             with conn() as c: rows=[dict(x) for x in c.execute('SELECT * FROM suppliers ORDER BY featured DESC,name')]
@@ -483,6 +498,15 @@ class App(SimpleHTTPRequestHandler):
             except sqlite3.IntegrityError:return self.send_json({'error':'That wedding URL is already in use'},409)
             with conn() as c:w=dict(c.execute('SELECT * FROM weddings WHERE id=?',(a['id'],)).fetchone())
             return self.send_json({'wedding':w})
+        if path=='/api/budget/settings':
+            a=self.require(csrf=True);
+            if not a:return
+            d=self.body()
+            try:total=max(0,float(d.get('total_budget',0)))
+            except:return self.send_json({'error':'Enter a valid budget amount'},400)
+            with conn() as c:
+                c.execute('INSERT INTO budget_settings(wedding_id,total_budget) VALUES(?,?) ON CONFLICT(wedding_id) DO UPDATE SET total_budget=excluded.total_budget',(a['id'],total))
+            return self.send_json({'ok':True,'total_budget':total})
         m=re.fullmatch(r'/api/seating/tables/(\d+)',path)
         if m:
             a=self.require(csrf=True);
@@ -530,6 +554,15 @@ class App(SimpleHTTPRequestHandler):
             if not a:return
             with conn() as c:c.execute('DELETE FROM seating_assignments WHERE guest_id=? AND wedding_id=?',(int(m.group(1)),a['id']))
             return self.send_json({'ok':True})
+        if path=='/api/budget/settings':
+            a=self.require(csrf=True);
+            if not a:return
+            d=self.body()
+            try:total=max(0,float(d.get('total_budget',0)))
+            except:return self.send_json({'error':'Enter a valid budget amount'},400)
+            with conn() as c:
+                c.execute('INSERT INTO budget_settings(wedding_id,total_budget) VALUES(?,?) ON CONFLICT(wedding_id) DO UPDATE SET total_budget=excluded.total_budget',(a['id'],total))
+            return self.send_json({'ok':True,'total_budget':total})
         m=re.fullmatch(r'/api/seating/tables/(\d+)',path)
         if m:
             a=self.require(csrf=True);
@@ -560,4 +593,4 @@ class App(SimpleHTTPRequestHandler):
         self.send_header('Set-Cookie',cookie);self.end_headers();self.wfile.write(b)
 
 if __name__=='__main__':
-    seed(); os.chdir(ROOT); print(f'Vowly Stage 8.3 running on http://0.0.0.0:{PORT} | DB={DB} | BASE_URL={BASE_URL}'); ThreadingHTTPServer(('0.0.0.0',PORT),App).serve_forever()
+    seed(); os.chdir(ROOT); print(f'Vowly Stage 9.1 running on http://0.0.0.0:{PORT} | DB={DB} | BASE_URL={BASE_URL}'); ThreadingHTTPServer(('0.0.0.0',PORT),App).serve_forever()
