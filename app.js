@@ -92,20 +92,120 @@ async function seatingPage(){
 const money=n=>'£'+Number(n||0).toLocaleString('en-GB',{minimumFractionDigits:0,maximumFractionDigits:2});
 async function budgetPage(){
  const d=await api('/api/budget'),rows=d.items||[],t=d.totals||{},today=new Date().toISOString().slice(0,10);
- $('[data-budget-total]').textContent=money(t.budget);$('[data-budget-planned]').textContent=money(t.planned);$('[data-budget-actual]').textContent=money(t.actual);$('[data-budget-paid]').textContent=money(t.paid);$('[data-budget-remaining]').textContent=money(t.remaining);$('[data-budget-progress]').style.width=Math.min(100,Number(t.percent||0))+'%';$('[data-budget-progress-label]').textContent=`${t.percent||0}% committed`;$('[data-budget-remaining-copy]').textContent=`${money(t.remaining)} remaining`;
- const warning=$('[data-budget-warning]');if(Number(t.actual)>Number(t.budget)&&Number(t.budget)>0){warning.hidden=false;warning.innerHTML=`<strong>Over budget by ${money(t.actual-t.budget)}</strong><span>Your actual wedding costs have exceeded the total budget.</span>`}
+ $('[data-budget-total]').textContent=money(t.budget);
+ $('[data-budget-planned]').textContent=money(t.planned);
+ $('[data-budget-actual]').textContent=money(t.actual);
+ $('[data-budget-paid]').textContent=money(t.paid);
+ $('[data-budget-remaining]').textContent=money(t.remaining);
+ $('[data-budget-progress]').style.width=Math.min(100,Number(t.percent||0))+'%';
+ $('[data-budget-progress-label]').textContent=`${t.percent||0}% committed`;
+ $('[data-budget-remaining-copy]').textContent=`${money(t.remaining)} remaining`;
+
+ const warning=$('[data-budget-warning]');
+ if(Number(t.actual)>Number(t.budget)&&Number(t.budget)>0){
+  warning.hidden=false;
+  warning.innerHTML=`<strong>Over budget by ${money(t.actual-t.budget)}</strong><span>Your actual wedding costs have exceeded the total budget.</span>`;
+ }
+
  const statusLabel=s=>s==='paid'?'Paid':s==='deposit'?'Deposit paid':'Not paid';
+
  const due=rows.filter(x=>x.due_date&&x.payment_status!=='paid').sort((a,b)=>a.due_date.localeCompare(b.due_date)).slice(0,5);
- $('[data-upcoming-payments]').innerHTML=due.length?due.map(x=>`<div class="payment-row ${x.due_date<today?'overdue':''}"><div><strong>${esc(x.name)}</strong><small>${x.due_date<today?'Overdue · ':''}${esc(x.due_date)}</small></div><div><strong>${money(Math.max(0,Number(x.actual||x.planned||0)-Number(x.paid||0)))}</strong><span class="payment-status ${x.payment_status}">${statusLabel(x.payment_status)}</span></div></div>`).join(''):'<div class="empty-state compact">No upcoming payments.</div>';
- const grouped={};rows.forEach(x=>{const k=x.category||'Other';grouped[k]=(grouped[k]||0)+Number(x.actual||x.planned||0)});const max=Math.max(1,...Object.values(grouped));$('[data-category-breakdown]').innerHTML=Object.entries(grouped).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`<div class="category-row"><div><strong>${esc(k)}</strong><span>${money(v)}</span></div><div class="category-track"><i style="width:${Math.round(v/max*100)}%"></i></div></div>`).join('')||'<div class="empty-state compact">No categories yet.</div>';
- const cats=[...new Set(rows.map(x=>x.category).filter(Boolean))].sort(),cat=$('[data-budget-category]');cat.innerHTML='<option value="">All categories</option>'+cats.map(c=>`<option>${esc(c)}</option>`).join('');const search=$('[data-budget-search]'),tb=$('tbody');
- const draw=()=>{const q=(search.value||'').toLowerCase(),c=cat.value;tb.innerHTML=rows.filter(x=>(!q||[x.name,x.category,x.supplier,x.notes].join(' ').toLowerCase().includes(q))&&(!c||x.category===c)).map(x=>`<tr><td><strong>${esc(x.name)}</strong>${x.notes?`<small>${esc(x.notes)}</small>`:''}</td><td>${esc(x.category)}</td><td>${money(x.planned)}</td><td>${money(x.actual)}</td><td>${money(x.paid)}</td><td><span class="payment-status ${x.payment_status}">${statusLabel(x.payment_status)}</span></td><td class="${x.due_date&&x.due_date<today&&x.payment_status!=='paid'?'overdue-text':''}">${esc(x.due_date||'—')}</td><td>${esc(x.supplier||'—')}</td><td><div class="row-actions"><button class="text-link" data-edit-expense="${x.id}">Edit</button><button class="icon-btn" data-delete-budget="${x.id}">×</button></div></td></tr>`).join('')||'<tr><td colspan="9"><div class="empty-table">No expenses yet. Add your first expense.</div></td></tr>';
- $$('[data-delete-budget]').forEach(b=>b.onclick=async()=>{if(confirm('Delete this expense?')){await api('/api/budget/'+b.dataset.deleteBudget,{method:'DELETE'});location.reload()}});
- $$('[data-edit-expense]').forEach(b=>b.onclick=()=>openExpense(rows.find(x=>x.id===Number(b.dataset.editExpense))))};search.oninput=draw;cat.onchange=draw;
- const modal=$('[data-budget-modal]'),form=$('[data-budget-form]');let editing=null;
- const openExpense=x=>{editing=x||null;form.reset();$('[data-expense-modal-title]').textContent=x?'Edit expense':'Add expense';$('[data-expense-save]').textContent=x?'Save changes':'Save expense';if(x)Object.entries(x).forEach(([k,v])=>{const el=form.elements[k];if(el)el.value=v??''});modal.classList.add('open')};
- $('[data-open-budget]').onclick=()=>openExpense(null);$('[data-close-budget]').onclick=()=>modal.classList.remove('open');modal.onclick=e=>{if(e.target===modal)modal.classList.remove('open')};form.onsubmit=async e=>{e.preventDefault();const body=Object.fromEntries(new FormData(form).entries());await api(editing?'/api/budget/'+editing.id:'/api/budget',{method:editing?'PUT':'POST',body:JSON.stringify(body)});location.reload()};draw();
- const totalModal=$('[data-total-budget-modal]');$('[data-edit-budget]').onclick=()=>{$('[name=total_budget]').value=t.budget||0;totalModal.classList.add('open')};$('[data-close-total-budget]').onclick=()=>totalModal.classList.remove('open');totalModal.onclick=e=>{if(e.target===totalModal)totalModal.classList.remove('open')};$('[data-total-budget-form]').onsubmit=async e=>{e.preventDefault();const f=new FormData(e.currentTarget);await api('/api/budget/settings',{method:'PUT',body:JSON.stringify({total_budget:f.get('total_budget')})});location.reload()}
+ $('[data-upcoming-payments]').innerHTML=due.length?due.map(x=>`<div class="payment-row ${x.due_date<today?'overdue':''}">
+   <div><strong>${esc(x.name)}</strong><small>${x.due_date<today?'Overdue · ':''}${esc(x.due_date)}</small></div>
+   <div><strong>${money(Math.max(0,Number(x.actual||x.planned||0)-Number(x.paid||0)))}</strong><span class="payment-status ${x.payment_status}">${statusLabel(x.payment_status)}</span></div>
+ </div>`).join(''):'<div class="empty-state compact">No upcoming payments.</div>';
+
+ const grouped={};
+ rows.forEach(x=>{const k=x.category||'Other';grouped[k]=(grouped[k]||0)+Number(x.actual||x.planned||0)});
+ const max=Math.max(1,...Object.values(grouped));
+ $('[data-category-breakdown]').innerHTML=Object.entries(grouped).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`<div class="category-row">
+   <div><strong>${esc(k)}</strong><span>${money(v)}</span></div>
+   <div class="category-track"><i style="width:${Math.round(v/max*100)}%"></i></div>
+ </div>`).join('')||'<div class="empty-state compact">No categories yet.</div>';
+
+ const cats=[...new Set(rows.map(x=>x.category).filter(Boolean))].sort();
+ const cat=$('[data-budget-category]');
+ cat.innerHTML='<option value="">All categories</option>'+cats.map(c=>`<option>${esc(c)}</option>`).join('');
+ const search=$('[data-budget-search]'),list=$('[data-budget-expense-list]');
+
+ const draw=()=>{
+   const q=(search.value||'').toLowerCase(),c=cat.value;
+   const filtered=rows.filter(x=>(!q||[x.name,x.category,x.supplier,x.notes].join(' ').toLowerCase().includes(q))&&(!c||x.category===c));
+   list.innerHTML=filtered.length?filtered.map(x=>{
+     const dueClass=x.due_date&&x.due_date<today&&x.payment_status!=='paid'?'overdue-text':'';
+     return `<article class="expense-row">
+       <div class="expense-main">
+         <div>
+           <span class="eyebrow">${esc(x.category||'Other')}</span>
+           <h4>${esc(x.name)}</h4>
+           ${x.supplier?`<p>${esc(x.supplier)}</p>`:''}
+           ${x.notes?`<small>${esc(x.notes)}</small>`:''}
+         </div>
+         <span class="payment-status ${x.payment_status}">${statusLabel(x.payment_status)}</span>
+       </div>
+       <div class="expense-numbers">
+         <div><span>Estimate</span><strong>${money(x.planned)}</strong></div>
+         <div><span>Actual</span><strong>${money(x.actual)}</strong></div>
+         <div><span>Paid</span><strong>${money(x.paid)}</strong></div>
+         <div><span>Due</span><strong class="${dueClass}">${esc(x.due_date||'—')}</strong></div>
+       </div>
+       <div class="expense-actions">
+         <button class="btn btn-secondary btn-small" data-edit-expense="${x.id}">Edit</button>
+         <button class="text-link danger-link" data-delete-budget="${x.id}">Delete</button>
+       </div>
+     </article>`;
+   }).join(''):'<div class="empty-state">No expenses match your filters.</div>';
+
+   $$('[data-delete-budget]').forEach(b=>b.onclick=async()=>{
+     if(confirm('Delete this expense?')){
+       await api('/api/budget/'+b.dataset.deleteBudget,{method:'DELETE'});
+       location.reload();
+     }
+   });
+
+   $$('[data-edit-expense]').forEach(b=>b.onclick=()=>openExpense(rows.find(x=>x.id===Number(b.dataset.editExpense))));
+ };
+
+ search.oninput=draw;
+ cat.onchange=draw;
+
+ const modal=$('[data-budget-modal]'),form=$('[data-budget-form]');
+ let editing=null;
+
+ const openExpense=x=>{
+   editing=x||null;
+   form.reset();
+   $('[data-expense-modal-title]').textContent=x?'Edit expense':'Add expense';
+   $('[data-expense-save]').textContent=x?'Save changes':'Save expense';
+   if(x)Object.entries(x).forEach(([k,v])=>{const el=form.elements[k];if(el)el.value=v??''});
+   modal.classList.add('open');
+ };
+
+ $('[data-open-budget]').onclick=()=>openExpense(null);
+ $('[data-close-budget]').onclick=()=>modal.classList.remove('open');
+ modal.onclick=e=>{if(e.target===modal)modal.classList.remove('open')};
+ form.onsubmit=async e=>{
+   e.preventDefault();
+   const body=Object.fromEntries(new FormData(form).entries());
+   await api(editing?'/api/budget/'+editing.id:'/api/budget',{method:editing?'PUT':'POST',body:JSON.stringify(body)});
+   location.reload();
+ };
+
+ draw();
+
+ const totalModal=$('[data-total-budget-modal]');
+ $('[data-edit-budget]').onclick=()=>{
+   $('[name=total_budget]').value=t.budget||0;
+   totalModal.classList.add('open');
+ };
+ $('[data-close-total-budget]').onclick=()=>totalModal.classList.remove('open');
+ totalModal.onclick=e=>{if(e.target===totalModal)totalModal.classList.remove('open')};
+ $('[data-total-budget-form]').onsubmit=async e=>{
+   e.preventDefault();
+   const f=new FormData(e.currentTarget);
+   await api('/api/budget/settings',{method:'PUT',body:JSON.stringify({total_budget:f.get('total_budget')})});
+   location.reload();
+ };
 }
 
 (async()=>{try{await initCommon();const p=document.body.dataset.page;if(p==='dashboard')await dashboard();if(p==='builder')await builder();if(p==='guests')await guests();if(p==='events')await eventsPage();if(p==='questions')await questionsPage();if(p==='seating')await seatingPage();if(p==='budget')await budgetPage();if(p==='checklist')await checklist();if(p==='pricing')await pricing();if(p==='invitations')await invitations();if(p==='suppliers')await suppliers()}catch(e){console.error(e)}})();

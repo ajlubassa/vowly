@@ -1,7 +1,17 @@
-# Vowly Stage 9.2 — Advanced Budget
-Adds expense editing, payment statuses, upcoming/overdue payments, category breakdown and over-budget warnings.
+# Vowly Stage 9.3 — Budget responsive polish
 
-Deploy to the same GitHub repo, replacing current files. Commit:
-`Vowly Stage 9.2 advanced budget`
+This update removes the wide horizontally-scrolling expense table and replaces it with responsive expense cards.
 
-Keep Railway `/data` volume. Wait for Online, then Ctrl + F5 once.
+Benefits:
+- Fits laptop screens much better
+- Easier to read on phones
+- Keeps Edit/Delete
+- Keeps payment status, due dates and supplier details
+- Keeps search and category filters
+
+Deploy to the same GitHub repo and replace current files.
+
+Commit:
+`Vowly Stage 9.3 responsive budget`
+
+Keep the Railway `/data` volume mounted. Wait for Online, then press Ctrl + F5 once.

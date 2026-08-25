@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Budget — Vowly</title>
-  <link rel="stylesheet" href="styles.css?v=9.2">
+  <link rel="stylesheet" href="styles.css?v=9.3">
 </head>
 <body class="app-body" data-page="budget">
 <div class="app-shell">
@@ -62,17 +62,19 @@
   <section class="panel"><div class="panel-head"><div><span class="eyebrow">Breakdown</span><h3>By category</h3></div></div><div data-category-breakdown></div></section>
 </div>
 <div class="budget-warning" data-budget-warning hidden></div>
-<div class="table-card">
-        <div class="table-tools">
-          <input class="input" data-budget-search placeholder="Search expenses" style="max-width:300px">
-          <select class="input" data-budget-category style="max-width:190px"><option value="">All categories</option></select>
+<div class="table-card budget-expenses-card">
+        <div class="table-tools budget-table-tools">
+          <div>
+            <span class="eyebrow">Expenses</span>
+            <h3>Wedding spending</h3>
+          </div>
+          <div class="budget-filters">
+            <input class="input" data-budget-search placeholder="Search expenses">
+            <select class="input" data-budget-category><option value="">All categories</option></select>
+          </div>
         </div>
-        <div class="table-scroll">
-          <table>
-            <thead><tr><th>Expense</th><th>Category</th><th>Estimate</th><th>Actual</th><th>Paid</th><th>Status</th><th>Due</th><th>Supplier</th><th></th></tr></thead>
-            <tbody></tbody>
-          </table>
-        </div>
+
+        <div class="budget-expense-list" data-budget-expense-list></div>
       </div>
     </div>
   </main>
@@ -111,6 +113,6 @@
   </div>
 </div>
 
-<script src="app.js?v=9.2"></script>
+<script src="app.js?v=9.3"></script>
 </body>
 </html>
