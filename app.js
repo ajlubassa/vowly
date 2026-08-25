@@ -78,48 +78,17 @@ async function eventsPage(){const rows=await api('/api/events'),list=$('[data-ev
 async function questionsPage(){const rows=await api('/api/rsvp/questions'),list=$('[data-question-list]');list.innerHTML=rows.map((q,i)=>`<article class="question-card"><span class="q-num">${i+1}</span><div><h3>${esc(q.prompt)}</h3><p>${cap(q.question_type)}${q.required?' · Required':''}</p>${q.options?`<small>${esc(q.options)}</small>`:''}</div></article>`).join('')||'<div class="empty-state">No custom questions yet.</div>';$('[data-question-form]').onsubmit=async e=>{e.preventDefault();const f=new FormData(e.currentTarget),body=Object.fromEntries(f.entries());body.required=f.get('required')==='on';await api('/api/rsvp/questions',{method:'POST',body:JSON.stringify(body)});location.reload()}}
 async function checklist(){const ts=await api('/api/tasks'),done=ts.filter(t=>t.done).length,p=ts.length?Math.round(done/ts.length*100):0;$('[data-pct]').textContent=p+'% complete';$('[data-progressbar]').style.width=p+'%';$('[data-checklist]').innerHTML=ts.map(t=>`<div class="task ${t.done?'done':''}"><input data-task="${t.id}" type="checkbox" ${t.done?'checked':''}><label>${esc(t.title)}</label><small>${esc(t.due||'')}</small></div>`).join('');$$('[data-task]').forEach(c=>c.onchange=async()=>{await api(`/api/tasks/${c.dataset.task}`,{method:'PUT',body:JSON.stringify({done:c.checked})});await checklist()});$('[data-add-task]').onsubmit=async e=>{e.preventDefault();const f=new FormData(e.currentTarget);await api('/api/tasks',{method:'POST',body:JSON.stringify({title:f.get('task'),due:f.get('due')})});e.currentTarget.reset();await checklist()}}
 async function pricing(){$$('[data-upgrade]').forEach(b=>b.onclick=async()=>{const plan=b.dataset.upgrade;if(plan==='free'){toast('Free plan remains active');return}try{const d=await api('/api/billing/checkout',{method:'POST',body:JSON.stringify({plan})});if(d.url)location.href=d.url;else if(d.demo){toast(`${cap(plan)} activated in demo mode`);setTimeout(()=>location.reload(),700)}}catch(e){toast(e.message)}})}
-async function invitations(){const state=await api('/api/invitations');const list=$('[data-invite-history]')||$('[data-invitation-history]')||$('[data-history]');if(list)list.innerHTML=state.history.map(i=>`<div class="task"><span>✉</span><label><strong>${esc(i.subject)}</strong><br><small>${esc(i.recipient)}</small></label><small>${esc(i.status)}</small></div>`).join('')||'<p>No invitations sent yet.</p>';const sel=$('[data-guest-select]');if(sel)sel.innerHTML='<option value="">Choose a guest</option>'+state.guests.filter(g=>g.email).map(g=>`<option value="${g.id}">${esc(g.name)} — ${esc(g.email)}</option>`).join('');const form=$('[data-invite-form]')||$('form[data-invitation-form]');if(form)form.onsubmit=async e=>{e.preventDefault();const f=new FormData(form);const d=await api('/api/invitations/send',{method:'POST',body:JSON.stringify(Object.fromEntries(f))});toast(d.sent?'Invitation sent':'Invitation recorded in preview mode');setTimeout(()=>location.reload(),700)};const rb=$('[data-send-reminders]')||$('[data-remind]');if(rb)rb.onclick=async()=>{const d=await api('/api/reminders/send',{method:'POST',body:'{}'});toast(`${d.count} reminder${d.count===1?'':'s'} processed`);const out=$('[data-reminder-result]');if(out)out.textContent=state.email_live?`${d.sent} email reminder(s) delivered.`:`${d.count} reminder(s) recorded in preview mode.`}}
-async function suppliers(){
- const data=await api('/api/suppliers'),root=$('[data-suppliers]');
- if(!root)return;
- const search=$('[data-supplier-search]'),category=$('[data-supplier-category]');
- const cats=[...new Set(data.map(s=>s.category).filter(Boolean))].sort();
- category.innerHTML='<option value="">All categories</option>'+cats.map(c=>`<option>${esc(c)}</option>`).join('');
-
- const modal=$('[data-supplier-budget-modal]'),budgetForm=$('[data-supplier-budget-form]');
- let chosen=null;
- const openBudget=s=>{
-   chosen=s;budgetForm.reset();
-   budgetForm.elements.name.value=s.category+' — '+s.name;
-   budgetForm.elements.category.value=s.category||'Other';
-   budgetForm.elements.supplier.value=s.name;
-   budgetForm.elements.planned.value=s.price_from||'';
-   budgetForm.elements.notes.value='Supplier listing: '+s.name;
-   modal.classList.add('open');
- };
- $('[data-close-supplier-budget]').onclick=()=>modal.classList.remove('open');
- modal.onclick=e=>{if(e.target===modal)modal.classList.remove('open')};
- budgetForm.onsubmit=async e=>{
-   e.preventDefault();
-   const body=Object.fromEntries(new FormData(budgetForm).entries());
-   await api('/api/budget',{method:'POST',body:JSON.stringify(body)});
-   modal.classList.remove('open');toast('Supplier added to your budget');
- };
-
- const draw=()=>{
-   const q=(search.value||'').trim().toLowerCase(),c=category.value;
-   const rows=data.filter(s=>(!q||[s.name,s.category,s.location,s.description].join(' ').toLowerCase().includes(q))&&(!c||s.category===c));
-   root.innerHTML=rows.length?rows.map(s=>`<article class="supplier-card ${s.featured?'featured':''}">
-     <div class="supplier-card-top"><span class="eyebrow">${s.featured?'Featured · ':''}${esc(s.category)}</span><span class="supplier-price">From ${money(s.price_from)}</span></div>
-     <h3>${esc(s.name)}</h3><p>${esc(s.description)}</p>
-     <div class="supplier-meta">${esc(s.location)}</div>
-     <div class="supplier-actions"><button class="btn btn-secondary" data-budget-supplier="${s.id}">Add to budget</button></div>
-     <form class="lead-form" data-lead="${s.id}"><input class="input" name="message" required placeholder="Tell them what you need"><button class="btn btn-primary" style="width:100%;margin-top:8px">Request quote</button></form>
-   </article>`).join(''):'<div class="empty-state">No suppliers match your search.</div>';
-   $$('[data-budget-supplier]').forEach(b=>b.onclick=()=>openBudget(data.find(s=>s.id===Number(b.dataset.budgetSupplier))));
-   $$('[data-lead]').forEach(f=>f.onsubmit=async e=>{e.preventDefault();const d=await api(`/api/suppliers/${f.dataset.lead}/leads`,{method:'POST',body:JSON.stringify({message:new FormData(f).get('message')})});toast(d.emailed?'Enquiry sent to supplier':'Enquiry saved — supplier email is in preview mode');f.reset()});
- };
- search.oninput=draw;category.onchange=draw;draw();
+async function invitations(){
+ const state=await api('/api/invitations'),stats=state.stats||{},list=$('[data-invite-history]');
+ $('[data-invite-total]').textContent=stats.total||0;$('[data-invite-email]').textContent=stats.with_email||0;$('[data-invite-pending]').textContent=stats.pending||0;$('[data-invite-attending]').textContent=stats.attending||0;
+ const url=$('[data-wedding-url]');url.value=state.wedding_url||'';
+ $('[data-copy-link]').onclick=async()=>{try{await navigator.clipboard.writeText(url.value);toast('RSVP link copied')}catch{url.select();document.execCommand('copy');toast('RSVP link copied')}};
+ $('[data-email-mode]').textContent=state.email_live?'Live email':'Preview mode';
+ $('[data-email-note]').textContent=state.email_live?'Invitations will be delivered by email.':'Email delivery is not configured yet. Sends are recorded safely in preview mode.';
+ list.innerHTML=state.history.length?state.history.map(i=>`<div class="invite-history-row"><div><strong>${esc(i.subject)}</strong><span>${esc(i.recipient)}</span></div><div><span class="payment-status ${i.status==='sent'?'paid':'deposit'}">${i.status==='sent'?'Sent':'Preview'}</span><small>${esc((i.created_at||'').slice(0,10))}</small></div></div>`).join(''):'<div class="empty-state compact">No invitations sent yet.</div>';
+ const sel=$('[data-guest-select]');sel.innerHTML='<option value="">Choose a guest with email</option>'+state.guests.filter(g=>g.email).map(g=>`<option value="${g.id}">${esc(g.name)} — ${esc(g.email)}</option>`).join('');
+ const form=$('[data-invite-form]');form.onsubmit=async e=>{e.preventDefault();const f=new FormData(form);const d=await api('/api/invitations/send',{method:'POST',body:JSON.stringify(Object.fromEntries(f.entries()))});toast(d.sent?'Invitation sent':'Invitation recorded in preview mode');setTimeout(()=>location.reload(),650)};
+ $('[data-remind]').onclick=async()=>{if(!stats.pending){toast('No pending RSVPs');return}const d=await api('/api/reminders/send',{method:'POST',body:'{}'});toast(`${d.count} reminder${d.count===1?'':'s'} processed`);$('[data-reminder-result]').textContent=state.email_live?`${d.sent} reminder email(s) delivered.`:`${d.count} reminder(s) recorded in preview mode.`};
 }
 const money=n=>'£'+Number(n||0).toLocaleString('en-GB',{minimumFractionDigits:0,maximumFractionDigits:2});
 async function budgetPage(){

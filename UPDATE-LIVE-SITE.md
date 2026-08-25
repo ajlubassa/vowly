@@ -1,20 +1,19 @@
-# Vowly Stage 11 — Guest & RSVP upgrade
+# Vowly Stage 12 — Invitations & guest communications
 
 Adds:
-- Responsive guest cards
-- Edit existing guests
-- RSVP status management
-- Meal choices and dietary requirements
-- Plus-one name and meal
-- Household display
-- RSVP answer summaries
-- Search by guest/household/meal/notes
-- RSVP and guest-group filters
-- Improved CSV export
+- Invitation dashboard metrics
+- Cleaner invitation composer
+- Guest RSVP link shown and copyable
+- Live email / preview mode clearly identified
+- More polished personalised invitation email template
+- Pending RSVP reminder workflow
+- Cleaner message history
+- Responsive mobile invitation page
+- Removes the obsolete "Stage 2" RSVP placeholder page
 
-Existing guests remain in the persistent Railway database. New guest fields are added automatically.
+Existing guests, RSVPs and invitation history are preserved.
 
 Deploy over the same GitHub repository and commit:
-`Vowly Stage 11 guest RSVP upgrade`
+`Vowly Stage 12 invitations communications`
 
 Keep Railway `/data` unchanged. Wait for Online, then Ctrl + F5 once.

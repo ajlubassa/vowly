@@ -1,3 +1,4 @@
+from html import escape as html_escape
 #!/usr/bin/env python3
 import os, re, io, json, time, hmac, hashlib, sqlite3, secrets, urllib.parse, urllib.request
 from http.server import ThreadingHTTPServer, SimpleHTTPRequestHandler
@@ -218,8 +219,11 @@ class App(SimpleHTTPRequestHandler):
         if path=='/api/invitations':
             a=self.require();
             if not a:return
-            with conn() as c: hist=[dict(x) for x in c.execute('SELECT recipient,subject,status,created_at FROM invitations WHERE wedding_id=? ORDER BY id DESC LIMIT 20',(a['id'],))]; guests=[dict(x) for x in c.execute('SELECT id,name,email,rsvp FROM guests WHERE wedding_id=? ORDER BY name',(a['id'],))]
-            return self.send_json({'history':hist,'guests':guests,'email_live':bool(RESEND_API_KEY)})
+            with conn() as c:
+                hist=[dict(x) for x in c.execute('SELECT recipient,subject,status,created_at FROM invitations WHERE wedding_id=? ORDER BY id DESC LIMIT 30',(a['id'],))]
+                guests=[dict(x) for x in c.execute('SELECT id,name,email,rsvp FROM guests WHERE wedding_id=? ORDER BY name',(a['id'],))]
+            stats={'total':len(guests),'with_email':sum(1 for g in guests if g['email']),'pending':sum(1 for g in guests if g['rsvp']=='pending'),'attending':sum(1 for g in guests if g['rsvp']=='yes')}
+            return self.send_json({'history':hist,'guests':guests,'email_live':bool(RESEND_API_KEY),'stats':stats,'wedding_url':f'{BASE_URL}/w/{a["slug"]}'})
         if path=='/api/households':
             a=self.require();
             if not a:return
@@ -442,7 +446,7 @@ class App(SimpleHTTPRequestHandler):
                 if gid:guest=c.execute('SELECT * FROM guests WHERE id=? AND wedding_id=?',(int(gid),a['id'])).fetchone()
             if guest:recipient=guest['email']
             if not recipient:return self.send_json({'error':'Choose a guest with an email address'},400)
-            link=f'{BASE_URL}/w/{a["slug"]}';html=f'<h2>{a["partner1"]} &amp; {a["partner2"]}</h2><p>{message}</p><p><a href="{link}">View wedding & RSVP</a></p>'
+            link=f'{BASE_URL}/w/{a["slug"]}';safe_message=html_escape(message).replace('\n','<br>');html=f'''<div style="font-family:Arial,sans-serif;max-width:560px;margin:auto;padding:36px 24px;color:#2f352f"><p style="font-size:12px;letter-spacing:2px;text-transform:uppercase;color:#748174">You're invited</p><h1 style="font-family:Georgia,serif;font-weight:400">{html_escape(a["partner1"])} &amp; {html_escape(a["partner2"])}</h1><p>Dear {html_escape(guest["name"])},</p><p style="line-height:1.7">{safe_message}</p><p style="margin:28px 0"><a href="{link}" style="background:#405a49;color:white;text-decoration:none;padding:13px 20px;border-radius:9px">View wedding &amp; RSVP</a></p><p style="font-size:12px;color:#777">If the button does not open, copy this link into your browser:<br>{link}</p></div>'''
             try:r=send_resend(recipient,subject,html,f'invite-{a["id"]}-{gid}-{hashlib.sha1(subject.encode()).hexdigest()[:10]}')
             except Exception as e:return self.send_json({'error':f'Email delivery failed: {e}'},502)
             status='sent' if r.get('sent') else 'preview'
@@ -605,4 +609,4 @@ class App(SimpleHTTPRequestHandler):
         self.send_header('Set-Cookie',cookie);self.end_headers();self.wfile.write(b)
 
 if __name__=='__main__':
-    seed(); os.chdir(ROOT); print(f'Vowly Stage 11 running on http://0.0.0.0:{PORT} | DB={DB} | BASE_URL={BASE_URL}'); ThreadingHTTPServer(('0.0.0.0',PORT),App).serve_forever()
+    seed(); os.chdir(ROOT); print(f'Vowly Stage 12 running on http://0.0.0.0:{PORT} | DB={DB} | BASE_URL={BASE_URL}'); ThreadingHTTPServer(('0.0.0.0',PORT),App).serve_forever()
