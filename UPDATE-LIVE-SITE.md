@@ -1,12 +1,16 @@
-# Update your live Railway site to Stage 6
+# Vowly Stage 6.1 — publish fix
 
-1. Open your `ajlubassa/vowly` repository on GitHub.
-2. Upload/replace the files from this Stage 6 folder in the repository root.
-3. Commit with message: `Vowly Stage 6`.
-4. Railway will detect the GitHub commit and redeploy the existing `web` service automatically.
-5. Do NOT delete the Railway volume. Keep it mounted at `/data`.
-6. Wait for Railway to show the web service as Online.
-7. Refresh your existing Railway Vowly URL.
-8. Open **Website studio** from the dashboard and publish a design.
+This patch fixes the Website Studio publish/live-preview issue.
 
-The database migration is additive: Stage 6 creates a `wedding_settings` table without deleting existing users, guests, RSVPs or tasks.
+1. Open your existing GitHub repo: `ajlubassa/vowly`.
+2. Upload all files from this Stage 6.1 folder into the repository root and replace the existing versions.
+3. Commit with: `Vowly Stage 6.1 publish fix`.
+4. Railway will redeploy automatically.
+5. Keep the existing `web-volume` mounted at `/data`.
+6. Wait until Railway shows the web service as **Online**.
+7. On Vowly, do a hard refresh once: `Ctrl + F5`.
+8. Open **Website studio**, make a change, and click **Publish changes**.
+9. You should see `Published ✓`.
+10. Click **Preview live ↗** and the new public site should reflect the saved changes.
+
+This build also disables browser caching for Vowly HTML/JS/CSS so future GitHub deployments are less likely to show stale frontend code.

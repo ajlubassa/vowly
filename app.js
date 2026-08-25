@@ -31,10 +31,30 @@ async function builder(){
  $$('.theme-choice').forEach(b=>{b.classList.toggle('active',b.dataset.theme===theme);b.onclick=()=>{theme=b.dataset.theme;$$('.theme-choice').forEach(x=>x.classList.toggle('active',x===b));render()}});
  $$('.swatch').forEach(b=>{b.classList.toggle('active',b.dataset.accent===accent);b.onclick=()=>{accent=b.dataset.accent;$$('.swatch').forEach(x=>x.classList.toggle('active',x===b));render()}});
  render();$('[data-qr]').src=`/api/wedding/qr.png?slug=${encodeURIComponent(w.slug)}`;
- $('[data-save]').onclick=async()=>{
-  const body={};fields.forEach(n=>body[n]=$(`[name=${n}]`).value);const r=await api('/api/wedding',{method:'POST',body:JSON.stringify(body)});
-  const sb={theme,accent};['hero_title','schedule','travel','faq','registry'].forEach(n=>sb[n]=$(`[name=${n}]`).value);['show_story','show_schedule','show_travel','show_faq','show_registry'].forEach(n=>sb[n]=$(`[name=${n}]`).checked);
-  await api('/api/wedding/settings',{method:'POST',body:JSON.stringify(sb)});ME.wedding=r.wedding;$$('[data-public-link]').forEach(a=>a.href=`/w/${ME.wedding.slug}`);$('[data-qr]').src=`/api/wedding/qr.png?slug=${encodeURIComponent(ME.wedding.slug)}&t=${Date.now()}`;toast('Wedding website published');
+ const saveBtn=$('[data-save]'),status=$('[data-publish-status]');
+ saveBtn.onclick=async()=>{
+  const original=saveBtn.textContent;
+  saveBtn.disabled=true;saveBtn.textContent='Publishing…';
+  if(status){status.textContent='Saving…';status.className='publish-status saving'}
+  try{
+   const body={};fields.forEach(n=>body[n]=$(`[name=${n}]`).value);
+   const r=await api('/api/wedding',{method:'POST',body:JSON.stringify(body)});
+   const sb={theme,accent};
+   ['hero_title','schedule','travel','faq','registry'].forEach(n=>sb[n]=$(`[name=${n}]`).value);
+   ['show_story','show_schedule','show_travel','show_faq','show_registry'].forEach(n=>sb[n]=$(`[name=${n}]`).checked);
+   await api('/api/wedding/settings',{method:'POST',body:JSON.stringify(sb)});
+   ME.wedding=r.wedding;
+   $$('[data-public-link]').forEach(a=>a.href=`/w/${ME.wedding.slug}?v=${Date.now()}`);
+   $('[data-qr]').src=`/api/wedding/qr.png?slug=${encodeURIComponent(ME.wedding.slug)}&t=${Date.now()}`;
+   if(status){status.textContent='Published ✓';status.className='publish-status success'}
+   toast('Wedding website published');
+  }catch(e){
+   console.error(e);
+   if(status){status.textContent=e.message||'Could not publish';status.className='publish-status error'}
+   toast(e.message||'Could not publish changes');
+  }finally{
+   saveBtn.disabled=false;saveBtn.textContent=original;
+  }
  };
 }async function guests(){GUESTS=await api('/api/guests');$('[data-total]').textContent=GUESTS.length;$('[data-attending]').textContent=GUESTS.filter(g=>g.rsvp==='yes').length;$('[data-awaiting]').textContent=GUESTS.filter(g=>g.rsvp==='pending').length;renderGuests();$('[data-search]').oninput=renderGuests;$('[data-filter]').onchange=renderGuests;const m=$('.modal-backdrop');$('[data-open-modal]').onclick=()=>m.classList.add('open');$('[data-close-modal]').onclick=()=>m.classList.remove('open');$('[data-guest-form]').onsubmit=async e=>{e.preventDefault();const f=new FormData(e.currentTarget);await api('/api/guests',{method:'POST',body:JSON.stringify({name:f.get('name'),email:f.get('email'),group_name:f.get('group'),plus_one:f.get('plusOne')==='on'})});m.classList.remove('open');e.currentTarget.reset();await guests();toast('Guest added')}}
 async function checklist(){const ts=await api('/api/tasks'),done=ts.filter(t=>t.done).length,p=ts.length?Math.round(done/ts.length*100):0;$('[data-pct]').textContent=p+'% complete';$('[data-progressbar]').style.width=p+'%';$('[data-checklist]').innerHTML=ts.map(t=>`<div class="task ${t.done?'done':''}"><input data-task="${t.id}" type="checkbox" ${t.done?'checked':''}><label>${esc(t.title)}</label><small>${esc(t.due||'')}</small></div>`).join('');$$('[data-task]').forEach(c=>c.onchange=async()=>{await api(`/api/tasks/${c.dataset.task}`,{method:'PUT',body:JSON.stringify({done:c.checked})});await checklist()});$('[data-add-task]').onsubmit=async e=>{e.preventDefault();const f=new FormData(e.currentTarget);await api('/api/tasks',{method:'POST',body:JSON.stringify({title:f.get('task'),due:f.get('due')})});e.currentTarget.reset();await checklist()}}

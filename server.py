@@ -100,6 +100,14 @@ def verify_stripe_sig(payload,header):
 
 class App(SimpleHTTPRequestHandler):
     server_version='Vowly/5'
+    def end_headers(self):
+        path=urllib.parse.urlparse(self.path).path
+        if path.endswith(('.html','.js','.css')) or path=='/':
+            self.send_header('Cache-Control','no-cache, no-store, must-revalidate')
+            self.send_header('Pragma','no-cache')
+            self.send_header('Expires','0')
+        super().end_headers()
+
     def log_message(self,fmt,*args): print('[Vowly]',fmt%args)
     def end_headers(self):
         self.send_header('X-Content-Type-Options','nosniff'); self.send_header('X-Frame-Options','DENY'); self.send_header('Referrer-Policy','strict-origin-when-cross-origin'); self.send_header('Permissions-Policy','camera=(), microphone=(), geolocation=()');
@@ -362,4 +370,4 @@ class App(SimpleHTTPRequestHandler):
         self.send_header('Set-Cookie',cookie);self.end_headers();self.wfile.write(b)
 
 if __name__=='__main__':
-    seed(); os.chdir(ROOT); print(f'Vowly Stage 6 running on http://0.0.0.0:{PORT} | DB={DB} | BASE_URL={BASE_URL}'); ThreadingHTTPServer(('0.0.0.0',PORT),App).serve_forever()
+    seed(); os.chdir(ROOT); print(f'Vowly Stage 6.1 running on http://0.0.0.0:{PORT} | DB={DB} | BASE_URL={BASE_URL}'); ThreadingHTTPServer(('0.0.0.0',PORT),App).serve_forever()
