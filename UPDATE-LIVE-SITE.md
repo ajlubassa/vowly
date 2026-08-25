@@ -1,19 +1,20 @@
-# Vowly Stage 10 — Suppliers upgrade
+# Vowly Stage 11 — Guest & RSVP upgrade
 
-Stage 10 improves the supplier workflow:
-- Supplier search now works
-- Category filter now works
-- Cleaner supplier cards and pricing
-- Request quote remains available
-- New Add to budget action
-- Supplier name/category/starting price are prefilled
-- Quote/actual cost, paid amount, status, due date and notes can be recorded
-- Saving creates the expense in the existing Budget section
-- Responsive mobile styling
+Adds:
+- Responsive guest cards
+- Edit existing guests
+- RSVP status management
+- Meal choices and dietary requirements
+- Plus-one name and meal
+- Household display
+- RSVP answer summaries
+- Search by guest/household/meal/notes
+- RSVP and guest-group filters
+- Improved CSV export
 
-Deploy these files over the existing GitHub repo.
+Existing guests remain in the persistent Railway database. New guest fields are added automatically.
 
-Commit:
-`Vowly Stage 10 suppliers upgrade`
+Deploy over the same GitHub repository and commit:
+`Vowly Stage 11 guest RSVP upgrade`
 
-Keep the Railway `/data` volume unchanged. Wait until Railway is Online, then press Ctrl + F5 once.
+Keep Railway `/data` unchanged. Wait for Online, then Ctrl + F5 once.

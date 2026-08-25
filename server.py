@@ -67,6 +67,10 @@ def unique_slug(c,base):
 def seed():
     with conn() as c:
         c.executescript(SCHEMA)
+        gcols=[r['name'] for r in c.execute("PRAGMA table_info(guests)").fetchall()]
+        if 'meal_choice' not in gcols:c.execute("ALTER TABLE guests ADD COLUMN meal_choice TEXT DEFAULT ''")
+        if 'plus_one_name' not in gcols:c.execute("ALTER TABLE guests ADD COLUMN plus_one_name TEXT DEFAULT ''")
+        if 'plus_one_meal' not in gcols:c.execute("ALTER TABLE guests ADD COLUMN plus_one_meal TEXT DEFAULT ''")
         bcols=[r['name'] for r in c.execute("PRAGMA table_info(budget_items)").fetchall()]
         if 'payment_status' not in bcols:c.execute("ALTER TABLE budget_items ADD COLUMN payment_status TEXT DEFAULT 'not_paid'")
         cols=[r['name'] for r in c.execute("PRAGMA table_info(guests)").fetchall()]
@@ -198,10 +202,12 @@ class App(SimpleHTTPRequestHandler):
                 rows=[dict(x) for x in c.execute('SELECT g.*,h.name household_name FROM guests g LEFT JOIN households h ON h.id=g.household_id WHERE g.wedding_id=? ORDER BY g.name',(a['id'],))]
                 evs=[dict(x) for x in c.execute('SELECT * FROM wedding_events WHERE wedding_id=? ORDER BY event_date,start_time,id',(a['id'],))]
                 inv=[dict(x) for x in c.execute('SELECT gei.guest_id,gei.event_id,gei.invited,gei.rsvp FROM guest_event_invites gei JOIN guests g ON g.id=gei.guest_id WHERE g.wedding_id=?',(a['id'],))]
-            invite_map={}
+                answers=[dict(x) for x in c.execute('SELECT ra.guest_id,rq.prompt,ra.answer FROM rsvp_answers ra JOIN rsvp_questions rq ON rq.id=ra.question_id WHERE rq.wedding_id=? ORDER BY rq.sort_order,rq.id',(a['id'],))]
+            invite_map={};answer_map={}
             for x in inv: invite_map.setdefault(x['guest_id'],[]).append(x)
+            for x in answers: answer_map.setdefault(x['guest_id'],[]).append({'prompt':x['prompt'],'answer':x['answer']})
             for r in rows:
-                r['plus_one']=bool(r['plus_one']);r['events']=invite_map.get(r['id'],[])
+                r['plus_one']=bool(r['plus_one']);r['events']=invite_map.get(r['id'],[]);r['answers']=answer_map.get(r['id'],[])
             return self.send_json({'guests':rows,'events':evs})
         if path=='/api/tasks':
             a=self.require();
@@ -325,7 +331,7 @@ class App(SimpleHTTPRequestHandler):
             d=self.body();name=str(d.get('name','')).strip();email=str(d.get('email','')).strip()
             if not name:return self.send_json({'error':'Guest name required'},400)
             with conn() as c:
-                cur=c.execute('INSERT INTO guests(wedding_id,name,email,group_name,plus_one,rsvp,dietary,household_id,notes) VALUES(?,?,?,?,?,?,?,?,?)',(a['id'],name,email,d.get('group_name','Other'),1 if d.get('plus_one') else 0,'pending','',d.get('household_id') or None,str(d.get('notes',''))))
+                cur=c.execute('INSERT INTO guests(wedding_id,name,email,group_name,plus_one,rsvp,dietary,household_id,notes,meal_choice,plus_one_name,plus_one_meal) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)',(a['id'],name,email,d.get('group_name','Other'),1 if d.get('plus_one') else 0,d.get('rsvp','pending'),str(d.get('dietary','')),d.get('household_id') or None,str(d.get('notes','')),str(d.get('meal_choice','')),str(d.get('plus_one_name','')),str(d.get('plus_one_meal',''))))
                 gid=cur.lastrowid
                 for ev in c.execute('SELECT id FROM wedding_events WHERE wedding_id=?',(a['id'],)).fetchall():c.execute('INSERT OR IGNORE INTO guest_event_invites(guest_id,event_id,invited,rsvp) VALUES(?,?,1,?)',(gid,ev['id'],'pending'))
             return self.send_json({'id':gid},201)
@@ -540,7 +546,7 @@ class App(SimpleHTTPRequestHandler):
             if not a:return
             d=self.body();gid=int(m.group(1))
             with conn() as c:
-                c.execute('UPDATE guests SET name=?,email=?,group_name=?,plus_one=?,household_id=?,notes=? WHERE id=? AND wedding_id=?',(str(d.get('name','')).strip(),str(d.get('email','')).strip(),d.get('group_name','Other'),1 if d.get('plus_one') else 0,d.get('household_id') or None,str(d.get('notes','')),gid,a['id']))
+                c.execute('UPDATE guests SET name=?,email=?,group_name=?,plus_one=?,household_id=?,notes=?,rsvp=?,dietary=?,meal_choice=?,plus_one_name=?,plus_one_meal=? WHERE id=? AND wedding_id=?',(str(d.get('name','')).strip(),str(d.get('email','')).strip(),d.get('group_name','Other'),1 if d.get('plus_one') else 0,d.get('household_id') or None,str(d.get('notes','')),d.get('rsvp','pending'),str(d.get('dietary','')),str(d.get('meal_choice','')),str(d.get('plus_one_name','')),str(d.get('plus_one_meal','')),gid,a['id']))
                 for x in d.get('events',[]):
                     c.execute('INSERT INTO guest_event_invites(guest_id,event_id,invited,rsvp) VALUES(?,?,?,COALESCE((SELECT rsvp FROM guest_event_invites WHERE guest_id=? AND event_id=?),"pending")) ON CONFLICT(guest_id,event_id) DO UPDATE SET invited=excluded.invited',(gid,int(x['event_id']),1 if x.get('invited') else 0,gid,int(x['event_id'])))
             return self.send_json({'ok':True})
@@ -599,4 +605,4 @@ class App(SimpleHTTPRequestHandler):
         self.send_header('Set-Cookie',cookie);self.end_headers();self.wfile.write(b)
 
 if __name__=='__main__':
-    seed(); os.chdir(ROOT); print(f'Vowly Stage 10 running on http://0.0.0.0:{PORT} | DB={DB} | BASE_URL={BASE_URL}'); ThreadingHTTPServer(('0.0.0.0',PORT),App).serve_forever()
+    seed(); os.chdir(ROOT); print(f'Vowly Stage 11 running on http://0.0.0.0:{PORT} | DB={DB} | BASE_URL={BASE_URL}'); ThreadingHTTPServer(('0.0.0.0',PORT),App).serve_forever()
