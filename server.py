@@ -67,6 +67,8 @@ def unique_slug(c,base):
 def seed():
     with conn() as c:
         c.executescript(SCHEMA)
+        bcols=[r['name'] for r in c.execute("PRAGMA table_info(budget_items)").fetchall()]
+        if 'payment_status' not in bcols:c.execute("ALTER TABLE budget_items ADD COLUMN payment_status TEXT DEFAULT 'not_paid'")
         cols=[r['name'] for r in c.execute("PRAGMA table_info(guests)").fetchall()]
         if 'household_id' not in cols:c.execute('ALTER TABLE guests ADD COLUMN household_id INTEGER')
         if 'notes' not in cols:c.execute("ALTER TABLE guests ADD COLUMN notes TEXT DEFAULT ''")
@@ -397,7 +399,9 @@ class App(SimpleHTTPRequestHandler):
             def num(v):
                 try:return max(0,float(v or 0))
                 except:return 0
-            with conn() as c:cur=c.execute('INSERT INTO budget_items(wedding_id,category,name,planned,actual,paid,due_date,supplier,notes) VALUES(?,?,?,?,?,?,?,?,?)',(a['id'],category,name,num(d.get('planned')),num(d.get('actual')),num(d.get('paid')),str(d.get('due_date','')),str(d.get('supplier','')),str(d.get('notes',''))))
+            status=d.get('payment_status','not_paid')
+            if status not in ('not_paid','deposit','paid'):status='not_paid'
+            with conn() as c:cur=c.execute('INSERT INTO budget_items(wedding_id,category,name,planned,actual,paid,due_date,supplier,notes,payment_status) VALUES(?,?,?,?,?,?,?,?,?,?)',(a['id'],category,name,num(d.get('planned')),num(d.get('actual')),num(d.get('paid')),str(d.get('due_date','')),str(d.get('supplier','')),str(d.get('notes','')),status))
             return self.send_json({'id':cur.lastrowid},201)
         if path=='/api/billing/checkout':
             a=self.require(csrf=True);
@@ -526,7 +530,9 @@ class App(SimpleHTTPRequestHandler):
             def num(v):
                 try:return max(0,float(v or 0))
                 except:return 0
-            with conn() as c:c.execute('UPDATE budget_items SET category=?,name=?,planned=?,actual=?,paid=?,due_date=?,supplier=?,notes=? WHERE id=? AND wedding_id=?',(str(d.get('category','Other')),str(d.get('name','')).strip(),num(d.get('planned')),num(d.get('actual')),num(d.get('paid')),str(d.get('due_date','')),str(d.get('supplier','')),str(d.get('notes','')),bid,a['id']))
+            status=d.get('payment_status','not_paid')
+            if status not in ('not_paid','deposit','paid'):status='not_paid'
+            with conn() as c:c.execute('UPDATE budget_items SET category=?,name=?,planned=?,actual=?,paid=?,due_date=?,supplier=?,notes=?,payment_status=? WHERE id=? AND wedding_id=?',(str(d.get('category','Other')),str(d.get('name','')).strip(),num(d.get('planned')),num(d.get('actual')),num(d.get('paid')),str(d.get('due_date','')),str(d.get('supplier','')),str(d.get('notes','')),status,bid,a['id']))
             return self.send_json({'ok':True})
         m=re.fullmatch(r'/api/guests/(\d+)',path)
         if m:
@@ -593,4 +599,4 @@ class App(SimpleHTTPRequestHandler):
         self.send_header('Set-Cookie',cookie);self.end_headers();self.wfile.write(b)
 
 if __name__=='__main__':
-    seed(); os.chdir(ROOT); print(f'Vowly Stage 9.1 running on http://0.0.0.0:{PORT} | DB={DB} | BASE_URL={BASE_URL}'); ThreadingHTTPServer(('0.0.0.0',PORT),App).serve_forever()
+    seed(); os.chdir(ROOT); print(f'Vowly Stage 9.2 running on http://0.0.0.0:{PORT} | DB={DB} | BASE_URL={BASE_URL}'); ThreadingHTTPServer(('0.0.0.0',PORT),App).serve_forever()

@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Budget — Vowly</title>
-  <link rel="stylesheet" href="styles.css?v=9.1">
+  <link rel="stylesheet" href="styles.css?v=9.2">
 </head>
 <body class="app-body" data-page="budget">
 <div class="app-shell">
@@ -57,14 +57,19 @@
         <div class="metric"><div class="metric-label">Remaining budget</div><div class="metric-value" data-budget-remaining>£0</div><div class="metric-note">Available to allocate</div></div>
       </div>
 
-      <div class="table-card">
+      <div class="budget-insights">
+  <section class="panel"><div class="panel-head"><div><span class="eyebrow">Payments</span><h3>Upcoming payments</h3></div></div><div data-upcoming-payments></div></section>
+  <section class="panel"><div class="panel-head"><div><span class="eyebrow">Breakdown</span><h3>By category</h3></div></div><div data-category-breakdown></div></section>
+</div>
+<div class="budget-warning" data-budget-warning hidden></div>
+<div class="table-card">
         <div class="table-tools">
           <input class="input" data-budget-search placeholder="Search expenses" style="max-width:300px">
           <select class="input" data-budget-category style="max-width:190px"><option value="">All categories</option></select>
         </div>
         <div class="table-scroll">
           <table>
-            <thead><tr><th>Expense</th><th>Category</th><th>Estimate</th><th>Actual</th><th>Paid</th><th>Due</th><th>Supplier</th><th></th></tr></thead>
+            <thead><tr><th>Expense</th><th>Category</th><th>Estimate</th><th>Actual</th><th>Paid</th><th>Status</th><th>Due</th><th>Supplier</th><th></th></tr></thead>
             <tbody></tbody>
           </table>
         </div>
@@ -75,7 +80,7 @@
 
 <div class="modal-backdrop" data-budget-modal>
   <div class="modal">
-    <div class="modal-head"><h3>Add expense</h3><button type="button" class="icon-btn" data-close-budget>×</button></div>
+    <div class="modal-head"><h3 data-expense-modal-title>Add expense</h3><button type="button" class="icon-btn" data-close-budget>×</button></div>
     <form data-budget-form>
       <div class="two-col">
         <div class="form-group"><label>Category</label><input class="input" name="category" placeholder="Photography"></div>
@@ -89,9 +94,9 @@
         <div class="form-group"><label>Paid so far £</label><input type="number" min="0" step="0.01" class="input" name="paid"></div>
         <div class="form-group"><label>Payment due</label><input type="date" class="input" name="due_date"></div>
       </div>
-      <div class="form-group"><label>Supplier</label><input class="input" name="supplier" placeholder="Optional"></div>
+      <div class="two-col"><div class="form-group"><label>Supplier</label><input class="input" name="supplier" placeholder="Optional"></div><div class="form-group"><label>Payment status</label><select class="input" name="payment_status"><option value="not_paid">Not paid</option><option value="deposit">Deposit paid</option><option value="paid">Paid</option></select></div></div>
       <div class="form-group"><label>Notes</label><textarea class="input" name="notes"></textarea></div>
-      <button class="btn btn-primary" style="width:100%">Save expense</button>
+      <button class="btn btn-primary" style="width:100%" data-expense-save>Save expense</button>
     </form>
   </div>
 </div>
@@ -106,6 +111,6 @@
   </div>
 </div>
 
-<script src="app.js?v=9.1"></script>
+<script src="app.js?v=9.2"></script>
 </body>
 </html>
