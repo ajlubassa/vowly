@@ -1,0 +1,4 @@
+const api=async(path,opts={})=>{const r=await fetch(path,{credentials:'include',headers:{'Content-Type':'application/json',...(opts.headers||{})},...opts});let d={};try{d=await r.json()}catch{}if(!r.ok)throw new Error(d.error||'Something went wrong');return d};
+function errBox(msg){const el=document.querySelector('[data-auth-error]');if(el){el.textContent=msg;el.style.display='block'}}
+document.querySelector('[data-login-form]')?.addEventListener('submit',async e=>{e.preventDefault();const f=new FormData(e.currentTarget);try{await api('/api/login',{method:'POST',body:JSON.stringify(Object.fromEntries(f))});location.href='/dashboard.html'}catch(x){errBox(x.message)}});
+document.querySelector('[data-signup-form]')?.addEventListener('submit',async e=>{e.preventDefault();const f=new FormData(e.currentTarget);try{await api('/api/signup',{method:'POST',body:JSON.stringify(Object.fromEntries(f))});location.href='/dashboard.html'}catch(x){errBox(x.message)}});
