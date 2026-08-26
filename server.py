@@ -111,8 +111,17 @@ def json_bytes(x): return json.dumps(x,separators=(',',':')).encode()
 def send_resend(to,subject,html,idempotency=None):
     if not RESEND_API_KEY: return {'sent':False,'preview':True}
     body=json_bytes({'from':EMAIL_FROM,'to':[to],'subject':subject,'html':html})
-    req=urllib.request.Request('https://api.resend.com/emails',data=body,method='POST',headers={'Authorization':f'Bearer {RESEND_API_KEY}','Content-Type':'application/json'})
-    if idempotency: req.add_header('Idempotency-Key',idempotency)
+req = urllib.request.Request(
+     'https://api.resend.com/emails',
+    data=body,
+    method='POST',
+    headers={
+        'Authorization': f'Bearer {RESEND_API_KEY}',
+        'Content-Type': 'application/json',
+        'User-Agent': 'Ceremli/1.0'
+    }
+)
+if idempotency: req.add_header('Idempotency-Key',idempotency)
     with urllib.request.urlopen(req,timeout=15) as r: out=json.loads(r.read())
     return {'sent':True,'provider_id':out.get('id','')}
 
