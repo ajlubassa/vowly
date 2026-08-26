@@ -3,13 +3,13 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Budget — Vowly</title>
+  <title>Budget — Ceremli</title>
   <link rel="stylesheet" href="styles.css?v=14">
 </head>
 <body class="app-body" data-page="budget">
 <div class="app-shell">
   <aside class="sidebar">
-    <a class="brand" href="/"><span class="brand-mark">V</span>Vowly</a>
+    <a class="brand" href="/"><span class="brand-mark">C</span>Ceremli</a>
     <nav class="side-nav">
       <a class="side-link" href="dashboard.html">Dashboard</a>
       <a class="side-link" href="builder.html">Website studio</a>
@@ -27,28 +27,12 @@
 
   <main class="app-main">
     <header class="topbar">
-      <div>
-        <span class="eyebrow">Wedding finances</span>
-        <h1>Budget</h1>
-      </div>
-      <div class="site-actions">
-        <button class="btn btn-secondary" data-logout>Log out</button>
-        <button type="button" class="btn btn-primary" data-open-budget>+ Add expense</button>
-      </div>
+      <div><span class="eyebrow">Wedding finances</span><h1>Budget</h1></div>
+      <div class="site-actions"><button class="btn btn-secondary" data-logout>Log out</button><button type="button" class="btn btn-primary" data-open-budget>+ Add expense</button></div>
     </header>
 
     <div class="app-content">
-      <section class="budget-hero panel">
-        <div>
-          <span class="eyebrow">Total wedding budget</span>
-          <div class="budget-total-row">
-            <strong data-budget-total>£25,000</strong>
-            <button type="button" class="btn btn-secondary btn-small" data-edit-budget>Edit budget</button>
-          </div>
-          <div class="budget-progress-track"><div class="budget-progress-fill" data-budget-progress></div></div>
-          <div class="budget-progress-copy"><span data-budget-progress-label>0% committed</span><span data-budget-remaining-copy>£25,000 remaining</span></div>
-        </div>
-      </section>
+      <section class="budget-hero panel"><div><span class="eyebrow">Total wedding budget</span><div class="budget-total-row"><strong data-budget-total>£25,000</strong><button type="button" class="btn btn-secondary btn-small" data-edit-budget>Edit budget</button></div><div class="budget-progress-track"><div class="budget-progress-fill" data-budget-progress></div></div><div class="budget-progress-copy"><span data-budget-progress-label>0% committed</span><span data-budget-remaining-copy>£25,000 remaining</span></div></div></section>
 
       <div class="metric-grid budget-metrics">
         <div class="metric"><div class="metric-label">Planned</div><div class="metric-value" data-budget-planned>£0</div><div class="metric-note">Estimated costs</div></div>
@@ -57,61 +41,16 @@
         <div class="metric"><div class="metric-label">Remaining budget</div><div class="metric-value" data-budget-remaining>£0</div><div class="metric-note">Available to allocate</div></div>
       </div>
 
-      <div class="budget-insights">
-  <section class="panel"><div class="panel-head"><div><span class="eyebrow">Payments</span><h3>Upcoming payments</h3></div></div><div data-upcoming-payments></div></section>
-  <section class="panel"><div class="panel-head"><div><span class="eyebrow">Breakdown</span><h3>By category</h3></div></div><div data-category-breakdown></div></section>
-</div>
-<div class="budget-warning" data-budget-warning hidden></div>
-<div class="table-card budget-expenses-card">
-        <div class="table-tools budget-table-tools">
-          <div>
-            <span class="eyebrow">Expenses</span>
-            <h3>Wedding spending</h3>
-          </div>
-          <div class="budget-filters">
-            <input class="input" data-budget-search placeholder="Search expenses">
-            <select class="input" data-budget-category><option value="">All categories</option></select>
-          </div>
-        </div>
-
-        <div class="budget-expense-list" data-budget-expense-list></div>
-      </div>
+      <div class="budget-insights"><section class="panel"><div class="panel-head"><div><span class="eyebrow">Payments</span><h3>Upcoming payments</h3></div></div><div data-upcoming-payments></div></section><section class="panel"><div class="panel-head"><div><span class="eyebrow">Breakdown</span><h3>By category</h3></div></div><div data-category-breakdown></div></section></div>
+      <div class="budget-warning" data-budget-warning hidden></div>
+      <div class="table-card budget-expenses-card"><div class="table-tools budget-table-tools"><div><span class="eyebrow">Expenses</span><h3>Wedding spending</h3></div><div class="budget-filters"><input class="input" data-budget-search placeholder="Search expenses"><select class="input" data-budget-category><option value="">All categories</option></select></div></div><div class="budget-expense-list" data-budget-expense-list></div></div>
     </div>
   </main>
 </div>
 
-<div class="modal-backdrop" data-budget-modal>
-  <div class="modal">
-    <div class="modal-head"><h3 data-expense-modal-title>Add expense</h3><button type="button" class="icon-btn" data-close-budget>×</button></div>
-    <form data-budget-form>
-      <div class="two-col">
-        <div class="form-group"><label>Category</label><input class="input" name="category" placeholder="Photography"></div>
-        <div class="form-group"><label>Expense</label><input required class="input" name="name" placeholder="Photographer"></div>
-      </div>
-      <div class="two-col">
-        <div class="form-group"><label>Estimated cost £</label><input type="number" min="0" step="0.01" class="input" name="planned"></div>
-        <div class="form-group"><label>Actual cost £</label><input type="number" min="0" step="0.01" class="input" name="actual"></div>
-      </div>
-      <div class="two-col">
-        <div class="form-group"><label>Paid so far £</label><input type="number" min="0" step="0.01" class="input" name="paid"></div>
-        <div class="form-group"><label>Payment due</label><input type="date" class="input" name="due_date"></div>
-      </div>
-      <div class="two-col"><div class="form-group"><label>Supplier</label><input class="input" name="supplier" placeholder="Optional"></div><div class="form-group"><label>Payment status</label><select class="input" name="payment_status"><option value="not_paid">Not paid</option><option value="deposit">Deposit paid</option><option value="paid">Paid</option></select></div></div>
-      <div class="form-group"><label>Notes</label><textarea class="input" name="notes"></textarea></div>
-      <button class="btn btn-primary" style="width:100%" data-expense-save>Save expense</button>
-    </form>
-  </div>
-</div>
+<div class="modal-backdrop" data-budget-modal><div class="modal"><div class="modal-head"><h3 data-expense-modal-title>Add expense</h3><button type="button" class="icon-btn" data-close-budget>×</button></div><form data-budget-form><div class="two-col"><div class="form-group"><label>Category</label><input class="input" name="category" placeholder="Photography"></div><div class="form-group"><label>Expense</label><input required class="input" name="name" placeholder="Photographer"></div></div><div class="two-col"><div class="form-group"><label>Estimated cost £</label><input type="number" min="0" step="0.01" class="input" name="planned"></div><div class="form-group"><label>Actual cost £</label><input type="number" min="0" step="0.01" class="input" name="actual"></div></div><div class="two-col"><div class="form-group"><label>Paid so far £</label><input type="number" min="0" step="0.01" class="input" name="paid"></div><div class="form-group"><label>Payment due</label><input type="date" class="input" name="due_date"></div></div><div class="two-col"><div class="form-group"><label>Supplier</label><input class="input" name="supplier" placeholder="Optional"></div><div class="form-group"><label>Payment status</label><select class="input" name="payment_status"><option value="not_paid">Not paid</option><option value="deposit">Deposit paid</option><option value="paid">Paid</option></select></div></div><div class="form-group"><label>Notes</label><textarea class="input" name="notes"></textarea></div><button class="btn btn-primary" style="width:100%" data-expense-save>Save expense</button></form></div></div>
 
-<div class="modal-backdrop" data-total-budget-modal>
-  <div class="modal">
-    <div class="modal-head"><h3>Set total wedding budget</h3><button type="button" class="icon-btn" data-close-total-budget>×</button></div>
-    <form data-total-budget-form>
-      <div class="form-group"><label>Total budget £</label><input required type="number" min="0" step="100" class="input" name="total_budget"></div>
-      <button class="btn btn-primary" style="width:100%">Save total budget</button>
-    </form>
-  </div>
-</div>
+<div class="modal-backdrop" data-total-budget-modal><div class="modal"><div class="modal-head"><h3>Set total wedding budget</h3><button type="button" class="icon-btn" data-close-total-budget>×</button></div><form data-total-budget-form><div class="form-group"><label>Total budget £</label><input required type="number" min="0" step="100" class="input" name="total_budget"></div><button class="btn btn-primary" style="width:100%">Save total budget</button></form></div></div>
 
 <script src="app.js?v=14"></script>
 </body>
