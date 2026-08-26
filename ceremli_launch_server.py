@@ -7,7 +7,9 @@ import server as core
 import ceremli_events_server as events
 
 PLAN_RANK={'free':0,'premium':1,'ultimate':2}
-PREMIUM_POST={'/api/reminders/send'}
+# Core invitation sending is available to every plan; premium-only capabilities can be added here later.
+PREMIUM_POST=set()
+REMOVED_PLANNING_PAGES={'/suppliers.html','/budget.html','/seating.html'}
 
 def allowed(plan,minimum): return PLAN_RANK.get(plan or 'free',0)>=PLAN_RANK[minimum]
 def rows(c,sql,args=()): return [dict(x) for x in c.execute(sql,args).fetchall()]
@@ -22,6 +24,8 @@ def migrate_launch():
 class CeremliLaunchApp(events.CeremliEventsApp):
     def do_GET(self):
         path=urllib.parse.urlparse(self.path).path
+        if path in REMOVED_PLANNING_PAGES:
+            self.send_response(302);self.send_header('Location','/dashboard.html');self.end_headers();return
         if path=='/api/wedding/media':
             a=self.require()
             if not a:return
@@ -44,7 +48,7 @@ class CeremliLaunchApp(events.CeremliEventsApp):
             if not a:return
             wid=a['id'];uid=a['user_id']
             with core.conn() as c:
-                payload={'exported_at':datetime.now(timezone.utc).isoformat(),'account':{'email':a['email'],'plan':a['plan']},'wedding':{k:a.get(k) for k in ('partner1','partner2','date','venue','story','slug')},'guests':rows(c,'SELECT * FROM guests WHERE wedding_id=? ORDER BY id',(wid,)),'households':rows(c,'SELECT * FROM households WHERE wedding_id=? ORDER BY id',(wid,)),'events':rows(c,'SELECT * FROM wedding_events WHERE wedding_id=? ORDER BY id',(wid,)),'tasks':rows(c,'SELECT * FROM tasks WHERE wedding_id=? ORDER BY id',(wid,)),'invitations':rows(c,'SELECT recipient,subject,message,status,created_at FROM invitations WHERE wedding_id=? ORDER BY id',(wid,)),'budget_items':rows(c,'SELECT * FROM budget_items WHERE wedding_id=? ORDER BY id',(wid,)),'seating_tables':rows(c,'SELECT * FROM seating_tables WHERE wedding_id=? ORDER BY id',(wid,)),'payments':rows(c,'SELECT plan,status,created_at FROM payments WHERE user_id=? ORDER BY id',(uid,))}
+                payload={'exported_at':datetime.now(timezone.utc).isoformat(),'account':{'email':a['email'],'plan':a['plan']},'wedding':{k:a.get(k) for k in ('partner1','partner2','date','venue','story','slug')},'guests':rows(c,'SELECT * FROM guests WHERE wedding_id=? ORDER BY id',(wid,)),'households':rows(c,'SELECT * FROM households WHERE wedding_id=? ORDER BY id',(wid,)),'events':rows(c,'SELECT * FROM wedding_events WHERE wedding_id=? ORDER BY id',(wid,)),'tasks':rows(c,'SELECT * FROM tasks WHERE wedding_id=? ORDER BY id',(wid,)),'invitations':rows(c,'SELECT recipient,subject,message,status,created_at FROM invitations WHERE wedding_id=? ORDER BY id',(wid,)),'payments':rows(c,'SELECT plan,status,created_at FROM payments WHERE user_id=? ORDER BY id',(uid,))}
                 mr=c.execute('SELECT media_json FROM wedding_media WHERE wedding_id=?',(wid,)).fetchone();payload['media']=json.loads(mr['media_json']) if mr else {'party':[],'gallery':[]}
             body=json.dumps(payload,indent=2,ensure_ascii=False).encode();self.send_response(200);self.send_header('Content-Type','application/json; charset=utf-8');self.send_header('Content-Disposition','attachment; filename="ceremli-data-export.json"');self.send_header('Content-Length',str(len(body)));self.end_headers();self.wfile.write(body);return
         return super().do_GET()
