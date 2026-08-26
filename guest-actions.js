@@ -60,20 +60,36 @@
     }
   }
 
-  // Capture-phase handling prevents the older inline guest handler in app.js from firing too.
+  async function exportGuests(){
+    try{
+      const data = await api('/api/guests');
+      const rows = data.guests || [];
+      const head = ['Name','Email','Household','Group','RSVP','Meal','Dietary','Plus one','Plus-one name','Notes'];
+      const lines = [head, ...rows.map(g => [g.name,g.email||'',g.household_name||'',g.group_name,g.rsvp,g.meal_choice||'',g.dietary||'',g.plus_one?'Yes':'No',g.plus_one_name||'',g.notes||''])]
+        .map(r => r.map(v => `"${String(v ?? '').replaceAll('"','""')}"`).join(','))
+        .join('\n');
+      const blob = new Blob([lines], {type:'text/csv'});
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'ceremli-guests.csv';
+      a.click();
+      URL.revokeObjectURL(a.href);
+      toast('Guest list exported');
+    }catch(e){
+      console.error(e);
+      toast(e.message || 'Could not export guest list');
+    }
+  }
+
+  // Capture-phase handling prevents older handlers in app.js from firing too.
   document.addEventListener('click', e => {
     const resend = e.target.closest('[data-resend-guest]');
-    if(resend){
-      e.preventDefault();
-      e.stopPropagation();
-      resendGuestInvite(resend);
-      return;
-    }
+    if(resend){ e.preventDefault(); e.stopPropagation(); resendGuestInvite(resend); return; }
+
     const pending = e.target.closest('[data-send-pending-invites]');
-    if(pending){
-      e.preventDefault();
-      e.stopPropagation();
-      sendPendingInvites(pending);
-    }
+    if(pending){ e.preventDefault(); e.stopPropagation(); sendPendingInvites(pending); return; }
+
+    const exportButton = e.target.closest('[data-export]');
+    if(exportButton){ e.preventDefault(); e.stopPropagation(); exportGuests(); }
   }, true);
 })();
