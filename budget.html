@@ -28,7 +28,7 @@
   <main class="app-main">
     <header class="topbar">
       <div><span class="eyebrow">Wedding finances</span><h1>Budget</h1></div>
-      <div class="site-actions"><button class="btn btn-secondary" data-logout>Log out</button><button type="button" class="btn btn-primary" data-open-budget>+ Add expense</button></div>
+      <div class="site-actions"><button class="btn btn-secondary" data-export-budget>Export CSV</button><button class="btn btn-secondary" data-logout>Log out</button><button type="button" class="btn btn-primary" data-open-budget>+ Add expense</button></div>
     </header>
 
     <div class="app-content">
@@ -38,10 +38,14 @@
         <div class="metric"><div class="metric-label">Planned</div><div class="metric-value" data-budget-planned>£0</div><div class="metric-note">Estimated costs</div></div>
         <div class="metric"><div class="metric-label">Spent</div><div class="metric-value" data-budget-actual>£0</div><div class="metric-note">Actual costs entered</div></div>
         <div class="metric"><div class="metric-label">Paid</div><div class="metric-value" data-budget-paid>£0</div><div class="metric-note">Money already paid</div></div>
+        <div class="metric"><div class="metric-label">Outstanding</div><div class="metric-value" data-budget-outstanding>£0</div><div class="metric-note">Still to be paid</div></div>
         <div class="metric"><div class="metric-label">Remaining budget</div><div class="metric-value" data-budget-remaining>£0</div><div class="metric-note">Available to allocate</div></div>
+        <div class="metric"><div class="metric-label">Overdue</div><div class="metric-value" data-budget-overdue>0</div><div class="metric-note">Payments past due</div></div>
+        <div class="metric"><div class="metric-label">Paid progress</div><div class="metric-value" data-budget-paid-pct>0%</div><div class="metric-note">Of committed costs paid</div></div>
       </div>
 
-      <div class="budget-insights"><section class="panel"><div class="panel-head"><div><span class="eyebrow">Payments</span><h3>Upcoming payments</h3></div></div><div data-upcoming-payments></div></section><section class="panel"><div class="panel-head"><div><span class="eyebrow">Breakdown</span><h3>By category</h3></div></div><div data-category-breakdown></div></section></div>
+      <div class="budget-health good" data-budget-health><strong>Checking payment health…</strong><span></span></div>
+      <div class="budget-insights"><section class="panel"><div class="panel-head"><div><span class="eyebrow">Payments</span><h3>Upcoming payments</h3></div></div><div class="next-payment-card" data-next-payment></div><div data-upcoming-payments></div></section><section class="panel"><div class="panel-head"><div><span class="eyebrow">Breakdown</span><h3>By category</h3></div></div><div data-category-breakdown></div></section></div>
       <div class="budget-warning" data-budget-warning hidden></div>
       <div class="table-card budget-expenses-card"><div class="table-tools budget-table-tools"><div><span class="eyebrow">Expenses</span><h3>Wedding spending</h3></div><div class="budget-filters"><input class="input" data-budget-search placeholder="Search expenses"><select class="input" data-budget-category><option value="">All categories</option></select></div></div><div class="budget-expense-list" data-budget-expense-list></div></div>
     </div>
@@ -53,5 +57,6 @@
 <div class="modal-backdrop" data-total-budget-modal><div class="modal"><div class="modal-head"><h3>Set total wedding budget</h3><button type="button" class="icon-btn" data-close-total-budget>×</button></div><form data-total-budget-form><div class="form-group"><label>Total budget £</label><input required type="number" min="0" step="100" class="input" name="total_budget"></div><button class="btn btn-primary" style="width:100%">Save total budget</button></form></div></div>
 
 <script src="app.js?v=14"></script>
+<script src="budget-polish.js?v=1"></script>
 </body>
 </html>
