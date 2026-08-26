@@ -73,7 +73,29 @@ async function builder(){
  $('[data-add-household]').onclick=async()=>{const name=prompt('Household name (e.g. The Thompson family)');if(name){await api('/api/households',{method:'POST',body:JSON.stringify({name})});location.reload()}};
  $('[data-export]').onclick=()=>{const head=['Name','Email','Household','Group','RSVP','Meal','Dietary','Plus one','Plus-one name','Notes'];const lines=[head,...rows.map(g=>[g.name,g.email||'',g.household_name||'',g.group_name,g.rsvp,g.meal_choice||'',g.dietary||'',g.plus_one?'Yes':'No',g.plus_one_name||'',g.notes||''])].map(r=>r.map(v=>`"${String(v).replaceAll('"','""')}"`).join(',')).join('\n');const blob=new Blob([lines],{type:'text/csv'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='vowly-guests.csv';a.click();URL.revokeObjectURL(a.href)};
  draw();
+ $('[data-resend-guest]').forEach(b => b.onclick = async () => {
+  const g = rows.find(x => x.id === Number(b.dataset.resendGuest));
+
+  if (!g || !g.email) {
+    alert('This guest has no email address.');
+    return;
+  }
+
+  try {
+    await api('/api/invitations/send', {
+      method: 'POST',
+      body: JSON.stringify({
+        guest_id: g.id
+      })
+    });
+
+    alert(`Invitation resent to ${g.email}`);
+  } catch (e) {
+    alert(`Could not resend invitation: ${e.message}`);
+  }
+});
 }
+
 async function eventsPage(){const rows=await api('/api/events'),list=$('[data-event-list]');list.innerHTML=rows.map(e=>`<article class="event-card"><span class="eyebrow">${e.is_primary?'Main event':'Event'}</span><h3>${esc(e.name)}</h3><p><strong>${esc(e.event_date||'Date TBD')} ${esc(e.start_time||'')}</strong></p><p>${esc(e.venue||'Venue TBD')}</p><p>${esc(e.description||'')}</p>${e.rsvp_deadline?`<small>RSVP by ${esc(e.rsvp_deadline)}</small>`:''}</article>`).join('')||'<div class="empty-state">No events yet.</div>';const add=$('[data-add-event]'),wrap=$('[data-event-form-wrap]'),cancel=$('[data-cancel-event]');if(add&&wrap)add.onclick=()=>{wrap.hidden=false;wrap.scrollIntoView({behavior:'smooth',block:'start'})};if(cancel&&wrap)cancel.onclick=()=>wrap.hidden=true;const form=$('[data-event-form]');if(form)form.onsubmit=async e=>{e.preventDefault();const f=new FormData(e.currentTarget),body=Object.fromEntries(f.entries());body.is_primary=f.get('is_primary')==='on';await api('/api/events',{method:'POST',body:JSON.stringify(body)});location.reload()}}
 async function questionsPage(){const rows=await api('/api/rsvp/questions'),list=$('[data-question-list]');list.innerHTML=rows.map((q,i)=>`<article class="question-card"><span class="q-num">${i+1}</span><div><h3>${esc(q.prompt)}</h3><p>${cap(q.question_type)}${q.required?' · Required':''}</p>${q.options?`<small>${esc(q.options)}</small>`:''}</div></article>`).join('')||'<div class="empty-state">No custom questions yet.</div>';$('[data-question-form]').onsubmit=async e=>{e.preventDefault();const f=new FormData(e.currentTarget),body=Object.fromEntries(f.entries());body.required=f.get('required')==='on';await api('/api/rsvp/questions',{method:'POST',body:JSON.stringify(body)});location.reload()}}
 async function checklist(){const ts=await api('/api/tasks'),done=ts.filter(t=>t.done).length,p=ts.length?Math.round(done/ts.length*100):0;$('[data-pct]').textContent=p+'% complete';$('[data-progressbar]').style.width=p+'%';$('[data-checklist]').innerHTML=ts.map(t=>`<div class="task ${t.done?'done':''}"><input data-task="${t.id}" type="checkbox" ${t.done?'checked':''}><label>${esc(t.title)}</label><small>${esc(t.due||'')}</small></div>`).join('');$$('[data-task]').forEach(c=>c.onchange=async()=>{await api(`/api/tasks/${c.dataset.task}`,{method:'PUT',body:JSON.stringify({done:c.checked})});await checklist()});$('[data-add-task]').onsubmit=async e=>{e.preventDefault();const f=new FormData(e.currentTarget);await api('/api/tasks',{method:'POST',body:JSON.stringify({title:f.get('task'),due:f.get('due')})});e.currentTarget.reset();await checklist()}}
