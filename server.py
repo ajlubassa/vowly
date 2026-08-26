@@ -135,6 +135,17 @@ def verify_stripe_sig(payload,header):
     signed=f'{ts}.'.encode()+payload; expected=hmac.new(STRIPE_WEBHOOK_SECRET.encode(),signed,hashlib.sha256).hexdigest()
     return any(hmac.compare_digest(expected,s) for s in parts.get('v1',[]))
 
+def security_headers(handler):
+    handler.send_header('X-Content-Type-Options','nosniff')
+    handler.send_header('X-Frame-Options','SAMEORIGIN')
+    handler.send_header('Referrer-Policy','strict-origin-when-cross-origin')
+    handler.send_header('Permissions-Policy','camera=(), microphone=(), geolocation=()')
+    handler.send_header('Cross-Origin-Opener-Policy','same-origin')
+    handler.send_header('Cross-Origin-Resource-Policy','same-origin')
+    if APP_ENV=='production':
+        handler.send_header('Strict-Transport-Security','max-age=31536000; includeSubDomains')
+
+
 class App(SimpleHTTPRequestHandler):
     server_version='Vowly/5'
     def end_headers(self):
@@ -216,6 +227,28 @@ class App(SimpleHTTPRequestHandler):
             with conn() as c: rows=[dict(x) for x in c.execute('SELECT * FROM tasks WHERE wedding_id=? ORDER BY id',(a['id'],))]
             for r in rows:r['done']=bool(r['done'])
             return self.send_json(rows)
+        if path=='/api/launch/readiness':
+            a=self.require();
+            if not a:return
+            with conn() as c:
+                guest_count=c.execute('SELECT COUNT(*) FROM guests WHERE wedding_id=?',(a['id'],)).fetchone()[0]
+                email_count=c.execute("SELECT COUNT(*) FROM guests WHERE wedding_id=? AND email<>''",(a['id'],)).fetchone()[0]
+                event_count=c.execute('SELECT COUNT(*) FROM wedding_events WHERE wedding_id=?',(a['id'],)).fetchone()[0]
+                question_count=c.execute('SELECT COUNT(*) FROM rsvp_questions WHERE wedding_id=?',(a['id'],)).fetchone()[0]
+                task_count=c.execute('SELECT COUNT(*) FROM tasks WHERE wedding_id=?',(a['id'],)).fetchone()[0]
+                settings=c.execute('SELECT * FROM wedding_settings WHERE wedding_id=?',(a['id'],)).fetchone()
+            checks=[
+                {'key':'wedding_details','label':'Wedding details completed','ok':bool(a.get('partner1') and a.get('partner2') and a.get('date'))},
+                {'key':'guest_list','label':'At least one guest added','ok':guest_count>0},
+                {'key':'guest_emails','label':'Guest emails added','ok':email_count>0},
+                {'key':'events','label':'At least one event created','ok':event_count>0},
+                {'key':'rsvp','label':'RSVP questions configured','ok':question_count>0},
+                {'key':'tasks','label':'Checklist started','ok':task_count>0},
+                {'key':'email','label':'Real email delivery configured','ok':bool(RESEND_API_KEY)},
+                {'key':'public_site','label':'Public wedding page available','ok':True},
+                {'key':'production','label':'Production mode enabled','ok':APP_ENV=='production'}
+            ]
+            return self.send_json({'checks':checks,'ready':all(x['ok'] for x in checks if x['key'] not in ('email',)),'email_live':bool(RESEND_API_KEY),'public_url':f'{BASE_URL}/w/{a["slug"]}'})
         if path=='/api/invitations':
             a=self.require();
             if not a:return
@@ -602,7 +635,7 @@ class App(SimpleHTTPRequestHandler):
             return self.send_json({'ok':True})
         return self.send_json({'error':'Not found'},404)
     def session_response(self,token,obj,expire=False):
-        b=json_bytes(obj);self.send_response(200);self.send_header('Content-Type','application/json');self.send_header('Content-Length',str(len(b)));cookie=f'vowly_session={token}; Path=/; HttpOnly; SameSite=Lax'
+        b=json_bytes(obj);self.send_response(200);self.send_header('Content-Type','application/json');security_headers(self);self.send_header('Content-Length',str(len(b)));cookie=f'vowly_session={token}; Path=/; HttpOnly; SameSite=Lax'
         if APP_ENV=='production':cookie+='; Secure'
         if expire:cookie+='; Max-Age=0'
         else:cookie+='; Max-Age=1209600'

@@ -209,6 +209,15 @@ async function budgetPage(){
  };
 }
 
+
+async function launchPage(){
+ const d=await api('/api/launch/readiness'),checks=d.checks||[],root=$('[data-launch-checks]');
+ const ok=checks.filter(x=>x.ok).length,total=checks.length||1,pct=Math.round(ok/total*100);
+ $('[data-launch-score]').textContent=pct+'%';
+ $('[data-launch-status]').textContent=d.ready?'Core setup ready':'A few things still need attention';
+ root.innerHTML=checks.map(x=>`<div class="launch-check ${x.ok?'ok':'todo'}"><span class="launch-dot"></span><div><strong>${esc(x.label)}</strong><small>${x.ok?'Ready':'Needs attention'}</small></div></div>`).join('');
+ $('[data-email-readiness]').innerHTML=d.email_live?'Real invitation email delivery is configured.':'Email is still in <strong>preview mode</strong>. Configure your Resend API key before inviting real guests by email.';
+}
 (async()=>{try{await initCommon();const p=document.body.dataset.page;if(p==='dashboard')await dashboard();if(p==='builder')await builder();if(p==='guests')await guests();if(p==='events')await eventsPage();if(p==='questions')await questionsPage();if(p==='seating')await seatingPage();if(p==='budget')await budgetPage();if(p==='checklist')await checklist();if(p==='pricing')await pricing();if(p==='invitations')await invitations();if(p==='suppliers')await suppliers()}catch(e){console.error(e)}})();
 
 
