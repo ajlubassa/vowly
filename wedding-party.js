@@ -1,0 +1,15 @@
+// Ceremli wedding party + gallery editor. Images are stored as compact data URLs until object storage is enabled.
+(function(){
+ const K='ceremli_site_media_v1';
+ const load=()=>{try{return JSON.parse(localStorage.getItem(K)||'{"party":[],"gallery":[]}')}catch{return {party:[],gallery:[]}}};
+ const save=x=>localStorage.setItem(K,JSON.stringify(x));
+ const fileData=f=>new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result);r.onerror=rej;r.readAsDataURL(f)});
+ async function start(){if(document.body?.dataset?.page!=='builder')return;let s=load();const party=document.querySelector('[data-party-list]'),gallery=document.querySelector('[data-gallery-list]');
+  const draw=()=>{party.innerHTML=s.party.length?s.party.map((p,i)=>`<div class="media-person">${p.photo?`<img src="${p.photo}" alt="">`:''}<div><strong>${esc(p.name)}</strong><small>${esc(p.role)}</small><p>${esc(p.bio||'')}</p></div><button class="icon-btn" data-party-delete="${i}">×</button></div>`).join(''):'<p class="muted">No wedding party members added yet.</p>';gallery.innerHTML=s.gallery.length?s.gallery.map((x,i)=>`<div class="gallery-edit-item"><img src="${x.src}" alt=""><button class="icon-btn" data-gallery-delete="${i}">×</button></div>`).join(''):'<p class="muted">No gallery photos yet.</p>';renderPreview()};
+  const renderPreview=()=>{const pp=document.querySelector('[data-preview-party]'),pg=document.querySelector('[data-preview-gallery]');if(pp){pp.style.display=s.party.length?'block':'none';pp.querySelector('[data-preview-party-grid]').innerHTML=s.party.map(p=>`<div class="party-preview-card">${p.photo?`<img src="${p.photo}" alt="${esc(p.name)}">`:''}<strong>${esc(p.name)}</strong><small>${esc(p.role)}</small><p>${esc(p.bio||'')}</p></div>`).join('')}if(pg){pg.style.display=s.gallery.length?'block':'none';pg.querySelector('[data-preview-gallery-grid]').innerHTML=s.gallery.map(x=>`<img src="${x.src}" alt="Wedding photo">`).join('')}};
+  document.querySelector('[data-party-form]').onsubmit=async e=>{e.preventDefault();const f=e.currentTarget,d=Object.fromEntries(new FormData(f));const photo=f.elements.photo.files[0];if(photo)d.photo=await fileData(photo);s.party.push(d);save(s);f.reset();draw()};
+  document.querySelector('[data-gallery-input]').onchange=async e=>{for(const f of [...e.target.files].slice(0,12-s.gallery.length)){s.gallery.push({src:await fileData(f)})}save(s);e.target.value='';draw()};
+  document.addEventListener('click',e=>{let b=e.target.closest('[data-party-delete]');if(b){s.party.splice(+b.dataset.partyDelete,1);save(s);draw()}b=e.target.closest('[data-gallery-delete]');if(b){s.gallery.splice(+b.dataset.galleryDelete,1);save(s);draw()}});draw();
+ }
+ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>setTimeout(start,0));else setTimeout(start,0);
+})();
