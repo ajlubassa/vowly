@@ -8,7 +8,17 @@
  .party-preview-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.party-preview-card{min-width:0;overflow:hidden}.party-preview-card img{display:block;width:100%!important;max-width:100%!important;aspect-ratio:4/5;object-fit:cover!important;object-position:center!important;border-radius:14px}
  .gallery-edit-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}.gallery-edit-item{position:relative;min-width:0;overflow:hidden;border-radius:14px;aspect-ratio:1/1}.gallery-edit-item img{display:block;width:100%!important;height:100%!important;max-width:100%!important;object-fit:cover!important;object-position:center!important}.gallery-edit-item .icon-btn{position:absolute;top:4px;right:4px;background:rgba(255,255,255,.9);border-radius:50%;width:32px;height:32px;line-height:1}
  [data-party-form] .btn{min-height:46px;color:var(--ink);background:#fff;border:1px solid var(--line);white-space:normal;text-align:center}
- @media(max-width:560px){.media-person{grid-template-columns:72px minmax(0,1fr) 32px;gap:10px}.media-person img{width:72px!important;height:90px!important;max-width:72px!important}.party-preview-grid{grid-template-columns:1fr 1fr}.gallery-edit-grid{grid-template-columns:repeat(2,minmax(0,1fr))}[data-party-form] .btn{width:100%}}
+ @media(max-width:900px){
+   html,body{max-width:100%;overflow-x:hidden}
+   .app-content.studio-layout{display:flex!important;flex-direction:column!important;width:100%!important;max-width:100%!important;padding:16px!important;gap:18px!important;overflow:visible!important}
+   .studio-controls{display:grid!important;grid-template-columns:1fr!important;gap:16px!important;order:1!important;width:100%!important;max-width:100%!important;min-width:0!important;visibility:visible!important;opacity:1!important}
+   .studio-preview-wrap{position:static!important;order:2!important;width:100%!important;max-width:100%!important;min-width:0!important}
+   .form-card{display:block!important;width:100%!important;max-width:100%!important;min-width:0!important;overflow:hidden!important}
+   .site-preview{width:100%!important;max-width:100%!important;min-width:0!important;overflow:hidden!important}
+   .builder-topbar{height:auto!important;min-height:78px!important;padding:18px!important;gap:14px!important;align-items:flex-start!important;flex-wrap:wrap!important}
+   .builder-actions{width:100%!important;display:flex!important;gap:10px!important;flex-wrap:wrap!important}
+ }
+ @media(max-width:560px){.media-person{grid-template-columns:72px minmax(0,1fr) 32px;gap:10px}.media-person img{width:72px!important;height:90px!important;max-width:72px!important}.party-preview-grid{grid-template-columns:1fr 1fr}.gallery-edit-grid{grid-template-columns:repeat(2,minmax(0,1fr))}[data-party-form] .btn{width:100%}.theme-grid,.toggle-list{grid-template-columns:1fr!important}}
  `;document.head.appendChild(style);
  const MAX_PARTY=20,MAX_GALLERY=24;
  const compress=file=>new Promise((resolve,reject)=>{const img=new Image(),url=URL.createObjectURL(file);img.onload=()=>{try{const max=1200,scale=Math.min(1,max/Math.max(img.width,img.height)),c=document.createElement('canvas');c.width=Math.max(1,Math.round(img.width*scale));c.height=Math.max(1,Math.round(img.height*scale));c.getContext('2d').drawImage(img,0,0,c.width,c.height);const data=c.toDataURL('image/jpeg',.82);URL.revokeObjectURL(url);resolve(data)}catch(e){reject(e)}};img.onerror=()=>{URL.revokeObjectURL(url);reject(new Error('Could not read image'))};img.src=url});
