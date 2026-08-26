@@ -122,8 +122,8 @@ req = urllib.request.Request(
     }
 )
 if idempotency: req.add_header('Idempotency-Key',idempotency)
-    with urllib.request.urlopen(req,timeout=15) as r: out=json.loads(r.read())
-    return {'sent':True,'provider_id':out.get('id','')}
+with urllib.request.urlopen(req,timeout=15) as r: out=json.loads(r.read())
+return {'sent':True,'provider_id':out.get('id','')}
 
 def stripe_checkout(plan,user_id):
     price={'premium':STRIPE_PREMIUM_PRICE_ID,'ultimate':STRIPE_ULTIMATE_PRICE_ID}.get(plan,'')
