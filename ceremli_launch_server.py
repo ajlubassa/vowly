@@ -10,6 +10,12 @@ PLAN_RANK={'free':0,'premium':1,'ultimate':2}
 # Core invitation sending is available to every plan; premium-only capabilities can be added here later.
 PREMIUM_POST=set()
 REMOVED_PLANNING_PAGES={'/suppliers.html','/budget.html','/seating.html'}
+SIMPLIFIED_APP_PAGES={'/dashboard.html','/builder.html','/guests.html','/events.html','/questions.html','/invitations.html','/checklist.html','/pricing.html','/launch.html','/account.html'}
+REMOVED_NAV_LINKS=(
+    '<a class="side-link" href="seating.html">Seating plan</a>',
+    '<a class="side-link" href="budget.html">Budget</a>',
+    '<a class="side-link" href="suppliers.html">Suppliers</a>',
+)
 
 def allowed(plan,minimum): return PLAN_RANK.get(plan or 'free',0)>=PLAN_RANK[minimum]
 def rows(c,sql,args=()): return [dict(x) for x in c.execute(sql,args).fetchall()]
@@ -22,10 +28,21 @@ def migrate_launch():
         c.execute('''CREATE TABLE IF NOT EXISTS wedding_media(wedding_id INTEGER PRIMARY KEY,media_json TEXT NOT NULL DEFAULT '{"party":[],"gallery":[]}')''')
 
 class CeremliLaunchApp(events.CeremliEventsApp):
+    def serve_simplified_app_page(self,path):
+        try:
+            fp=core.ROOT/path.lstrip('/')
+            html=fp.read_text(encoding='utf-8')
+            for link in REMOVED_NAV_LINKS:html=html.replace(link,'')
+            raw=html.encode('utf-8')
+            self.send_response(200);self.send_header('Content-Type','text/html; charset=utf-8');self.send_header('Content-Length',str(len(raw)));self.send_header('Cache-Control','no-cache');self.end_headers();self.wfile.write(raw);return True
+        except Exception as e:
+            print('simplified page error',e);return False
+
     def do_GET(self):
         path=urllib.parse.urlparse(self.path).path
         if path in REMOVED_PLANNING_PAGES:
             self.send_response(302);self.send_header('Location','/dashboard.html');self.end_headers();return
+        if path in SIMPLIFIED_APP_PAGES and self.serve_simplified_app_page(path):return
         if path=='/api/wedding/media':
             a=self.require()
             if not a:return
