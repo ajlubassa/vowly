@@ -1,17 +1,22 @@
-# Vowly Stage 13.3 — Mobile header regression fix
+# Vowly Stage 13.4 — Full mobile layout cleanup
 
-This patch removes the overly broad Stage 13.2 header rules and replaces them with page-specific mobile headers.
+This patch replaces the previous experimental mobile headers with one stable layout across all app pages.
 
 Fixes:
-- Dashboard heading no longer crops
-- Checklist title/progress no longer collide
-- Invitations heading and preview button no longer overlap
-- Seating title/add-table controls no longer overlap
-- Budget title/add-expense controls no longer overlap
-- Website Studio heading no longer runs off-screen
-- More consistent spacing across mobile pages
+- Smaller mobile headings
+- No heading can sit on top of a button
+- Action buttons move to a clean second row
+- Menu button remains separately tappable
+- Dashboard, Guests, Events, Invitations, Checklist, Seating, Budget and Website Studio use the same safe mobile structure
+- Website Studio preview and URL no longer overflow
+- Forms collapse to one column on mobile
+- Metric cards stay within the viewport
+- Removes horizontal overflow from app pages
+- Raises button stacking so page text cannot block taps
 
-Deploy over the current repository and commit:
-`Vowly Stage 13.3 mobile header regression fix`
+Deploy over the current GitHub repository.
 
-Wait for Railway to be Online, then refresh on phone.
+Commit:
+`Vowly Stage 13.4 full mobile cleanup`
+
+Keep Railway `/data` unchanged. Wait for Online, then refresh the phone page.

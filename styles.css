@@ -189,502 +189,268 @@
 }
 @media(max-width:560px){.quick-actions{grid-template-columns:1fr}.dashboard-hero{margin-bottom:14px}.metric-grid,.dashboard-grid{gap:12px}.metric{padding:16px}.metric-value{font-size:30px}.site-actions{gap:7px}}
 
-/* Stage 13.1 — Website Studio mobile polish */
+
+/* Stage 13.4 — full mobile header cleanup */
 @media(max-width:700px){
-  body[data-page="builder"] .app-main{
-    overflow-x:hidden;
+
+  html,body{
+    overflow-x:hidden !important;
   }
 
-  body[data-page="builder"] .builder-topbar{
-    position:sticky;
-    top:0;
-    z-index:20;
-    display:grid;
-    grid-template-columns:auto 1fr;
-    align-items:center;
-    gap:10px;
-    padding:12px 14px;
-    min-height:auto;
-    background:rgba(248,245,241,.96);
-    backdrop-filter:blur(10px);
-    border-bottom:1px solid var(--line);
+  .app-shell{
+    min-width:0 !important;
   }
 
-  body[data-page="builder"] .builder-topbar > div:first-child{
-    min-width:0;
-  }
-
-  body[data-page="builder"] .builder-topbar h1{
-    font-size:20px;
-    line-height:1.05;
-    margin:0;
-    white-space:nowrap;
-    overflow:hidden;
-    text-overflow:ellipsis;
-  }
-
-  body[data-page="builder"] .builder-mobile-kicker{
-    font-size:9px;
-    letter-spacing:.14em;
-    margin-bottom:2px;
-  }
-
-  body[data-page="builder"] .builder-actions{
-    display:flex;
-    justify-content:flex-end;
-    align-items:center;
-    gap:6px;
-    min-width:0;
-  }
-
-  body[data-page="builder"] .builder-actions .btn{
-    min-height:38px;
-    padding:8px 11px;
-    font-size:11px;
-    border-radius:12px;
-    white-space:nowrap;
-  }
-
-  body[data-page="builder"] .builder-actions [data-save]{
-    display:none;
-  }
-
-  body[data-page="builder"] .builder-content{
-    padding:12px;
-  }
-
-  body[data-page="builder"] .builder-grid{
-    grid-template-columns:1fr !important;
-    gap:14px;
-  }
-
-  body[data-page="builder"] .builder-controls{
-    order:2;
-  }
-
-  body[data-page="builder"] .builder-preview{
-    order:1;
-    min-width:0;
-  }
-
-  body[data-page="builder"] .builder-preview > .panel,
-  body[data-page="builder"] .preview-shell,
-  body[data-page="builder"] .site-preview,
-  body[data-page="builder"] iframe{
+  .app-main{
+    min-width:0 !important;
     width:100% !important;
+    overflow-x:hidden !important;
+  }
+
+  /* One predictable mobile header layout on every app page */
+  .topbar,
+  .builder-topbar{
+    position:relative !important;
+    display:grid !important;
+    grid-template-columns:48px minmax(0,1fr) !important;
+    grid-template-areas:
+      "menu heading"
+      "actions actions" !important;
+    align-items:center !important;
+    gap:10px 12px !important;
+    min-height:0 !important;
+    height:auto !important;
+    padding:14px 14px 12px !important;
+    overflow:visible !important;
+    background:var(--paper, #f8f5f1) !important;
+    border-bottom:1px solid var(--line) !important;
+  }
+
+  .topbar > div:first-child,
+  .builder-topbar > div:first-child{
+    grid-area:heading !important;
+    min-width:0 !important;
+    width:auto !important;
+    margin:0 !important;
+    padding:0 !important;
+  }
+
+  .mobile-menu-btn,
+  [data-menu-toggle]{
+    grid-area:menu !important;
+    position:static !important;
+    width:44px !important;
+    height:44px !important;
+    min-width:44px !important;
+    min-height:44px !important;
+    margin:0 !important;
+    padding:0 !important;
+    z-index:5 !important;
+  }
+
+  .topbar h1,
+  .builder-topbar h1{
+    position:static !important;
+    display:block !important;
+    width:100% !important;
+    max-width:100% !important;
+    margin:0 !important;
+    padding:0 !important;
+    font-family:Georgia,serif !important;
+    font-size:24px !important;
+    line-height:1.08 !important;
+    letter-spacing:-.02em !important;
+    white-space:normal !important;
+    overflow:visible !important;
+    text-overflow:clip !important;
+    transform:none !important;
+  }
+
+  .topbar .eyebrow,
+  .builder-topbar .eyebrow{
+    position:static !important;
+    display:block !important;
+    margin:0 0 4px !important;
+    padding:0 !important;
+    font-size:9px !important;
+    line-height:1.2 !important;
+    letter-spacing:.14em !important;
+    white-space:normal !important;
     max-width:100% !important;
   }
 
-  body[data-page="builder"] .preview-shell{
-    border-radius:18px;
-    overflow:hidden;
-  }
-
-  body[data-page="builder"] .preview-head{
-    display:flex;
-    flex-direction:column;
-    align-items:flex-start;
-    gap:4px;
-    padding:10px 12px;
-  }
-
-  body[data-page="builder"] .preview-head > *{
-    max-width:100%;
-  }
-
-  body[data-page="builder"] [data-public-link]{
-    font-size:11px;
-    overflow:hidden;
-    text-overflow:ellipsis;
-    white-space:nowrap;
-    max-width:100%;
-  }
-
-  body[data-page="builder"] .site-preview{
-    min-height:auto;
-  }
-
-  body[data-page="builder"] .site-preview .public-shell,
-  body[data-page="builder"] .site-preview .public-card{
-    border-radius:18px;
-  }
-
-  body[data-page="builder"] .site-preview h1{
-    font-size:clamp(36px,11vw,54px) !important;
-    line-height:.95 !important;
-  }
-
-  body[data-page="builder"] .site-preview .hero{
-    min-height:620px;
-    padding:34px 18px 40px;
-  }
-
-  body[data-page="builder"] .site-preview .public-nav{
-    padding:14px 16px;
-  }
-
-  body[data-page="builder"] .site-preview .public-nav > :first-child{
-    font-size:18px;
-  }
-
-  body[data-page="builder"] .site-preview .public-nav > :last-child{
-    font-size:12px;
-  }
-
-  body[data-page="builder"] .panel,
-  body[data-page="builder"] .form-card{
-    border-radius:18px;
-  }
-
-  body[data-page="builder"] .two-col{
-    grid-template-columns:1fr;
-  }
-
-  body[data-page="builder"] .style-options{
-    grid-template-columns:1fr 1fr;
-  }
-}
-
-@media(max-width:430px){
-  body[data-page="builder"] .builder-topbar{
-    grid-template-columns:auto 1fr;
-    padding:10px 10px;
-  }
-
-  body[data-page="builder"] .builder-topbar h1{
-    font-size:18px;
-  }
-
-  body[data-page="builder"] .builder-actions .btn{
-    padding:8px 9px;
-    font-size:10px;
-  }
-
-  body[data-page="builder"] .builder-content{
-    padding:8px;
-  }
-
-  body[data-page="builder"] .style-options{
-    grid-template-columns:1fr;
-  }
-}
-
-/* Give page titles their own breathing room instead of forcing everything into one row */
-  .topbar:not(.builder-topbar){
-    position:relative;
-    display:grid !important;
-    grid-template-columns:52px minmax(0,1fr) auto !important;
-    grid-template-areas:
-      "menu title logout"
-      "menu meta logout";
-    align-items:center !important;
-    column-gap:12px !important;
-    row-gap:3px !important;
-    min-height:96px !important;
-    padding:16px 14px !important;
-  }
-
-  .topbar:not(.builder-topbar) .mobile-menu-btn,
-  .topbar:not(.builder-topbar) [data-menu-toggle]{
-    grid-area:menu;
-    align-self:center;
-  }
-
-  .topbar:not(.builder-topbar) > div:first-of-type{
-    grid-area:title;
-    min-width:0;
-  }
-
-  .topbar:not(.builder-topbar) h1{
-    margin:0 !important;
-    font-size:clamp(28px,8vw,38px) !important;
-    line-height:1.02 !important;
-    letter-spacing:-.025em !important;
-    max-width:none !important;
-    white-space:normal !important;
-    overflow:visible !important;
-    text-overflow:clip !important;
-  }
-
-  .topbar:not(.builder-topbar) .topbar-meta,
-  .topbar:not(.builder-topbar) .page-meta,
-  .topbar:not(.builder-topbar) .progress-label{
-    grid-area:meta;
-    margin:0 !important;
-    font-size:13px !important;
-    line-height:1.2 !important;
-  }
-
-  .topbar:not(.builder-topbar) .topbar-actions,
-  .topbar:not(.builder-topbar) .site-actions{
-    grid-area:logout;
-    justify-self:end;
-    align-self:center;
-    display:flex;
-    gap:6px;
-  }
-
-  .topbar:not(.builder-topbar) .topbar-actions .btn,
-  .topbar:not(.builder-topbar) .site-actions .btn{
-    min-height:42px !important;
-    padding:9px 12px !important;
-    font-size:12px !important;
-    line-height:1.1 !important;
-    border-radius:14px !important;
-  }
-
-  /* Checklist: keep title and completion status visually separate */
-  body[data-page="checklist"] .topbar{
-    grid-template-columns:52px minmax(0,1fr) auto !important;
-  }
-
-  body[data-page="checklist"] .topbar h1{
-    font-size:32px !important;
-    line-height:1 !important;
-  }
-
-  body[data-page="checklist"] .topbar .progress-label,
-  body[data-page="checklist"] .topbar [class*="progress"]{
-    font-size:15px !important;
-    line-height:1.1 !important;
-    white-space:nowrap;
-  }
-
-  /* Website Studio: title no longer competes with controls */
-  body[data-page="builder"] .builder-topbar{
-    grid-template-columns:52px minmax(0,1fr) !important;
-    grid-template-areas:
-      "menu studio"
-      "menu title" !important;
-    gap:2px 12px !important;
-    padding:14px !important;
-    min-height:88px !important;
-  }
-
-  body[data-page="builder"] .builder-topbar .mobile-menu-btn,
-  body[data-page="builder"] .builder-topbar [data-menu-toggle]{
-    grid-area:menu;
-  }
-
-  body[data-page="builder"] .builder-topbar > div:first-of-type{
-    grid-area:studio;
-    min-width:0;
-  }
-
-  body[data-page="builder"] .builder-mobile-kicker{
-    display:block;
-    font-size:10px !important;
-    letter-spacing:.16em !important;
-    margin:0 0 3px !important;
-  }
-
-  body[data-page="builder"] .builder-topbar h1{
-    font-size:25px !important;
-    line-height:1.05 !important;
-    white-space:normal !important;
-    overflow:visible !important;
-    text-overflow:clip !important;
-  }
-
-  body[data-page="builder"] .builder-actions{
-    display:none !important;
-  }
-
-  body[data-page="builder"] .preview-head{
-    padding:12px 14px !important;
-    gap:6px !important;
-  }
-
-  body[data-page="builder"] .preview-head > :first-child{
-    font-size:13px !important;
-    font-weight:700;
-  }
-
-  body[data-page="builder"] [data-public-link]{
-    display:block;
-    width:100%;
-    font-size:11px !important;
-    line-height:1.3;
-    white-space:normal !important;
-    overflow-wrap:anywhere;
-  }
-}
-
-@media(max-width:390px){
-  .topbar:not(.builder-topbar) h1{
-    font-size:28px !important;
-  }
-  body[data-page="checklist"] .topbar h1{
-    font-size:29px !important;
-  }
-  body[data-page="builder"] .builder-topbar h1{
-    font-size:22px !important;
-  }
-}
-
-/* Stage 13.3 — stable mobile headers */
-@media(max-width:700px){
-
-  /* Generic app header */
-  .topbar{
-    display:grid !important;
-    grid-template-columns:52px minmax(0,1fr) auto !important;
-    align-items:center !important;
-    gap:10px !important;
-    padding:14px 12px !important;
-    min-height:78px !important;
-    overflow:visible !important;
-  }
-
-  .topbar > div:first-child{
-    min-width:0;
-  }
-
-  .topbar h1{
-    margin:0 !important;
-    font-size:28px !important;
-    line-height:1.05 !important;
-    white-space:normal !important;
-    overflow:visible !important;
-    text-overflow:clip !important;
-  }
-
-  .topbar .eyebrow{
-    display:block;
-    margin-bottom:4px;
-    font-size:9px !important;
-    line-height:1.15 !important;
-    letter-spacing:.14em !important;
-  }
-
-  .topbar .site-actions{
-    display:flex !important;
-    align-items:center;
-    justify-content:flex-end;
-    gap:6px;
-    flex-wrap:wrap;
-  }
-
-  .topbar .site-actions .btn{
-    min-height:40px !important;
-    padding:8px 11px !important;
-    font-size:11px !important;
-    line-height:1.05 !important;
-    border-radius:13px !important;
-    white-space:nowrap;
-  }
-
-  /* Dashboard: title stays compact */
-  body[data-page="dashboard"] .topbar h1{
-    font-size:27px !important;
-  }
-
-  /* Checklist: progress moves below title */
-  body[data-page="checklist"] .topbar{
-    grid-template-columns:52px minmax(0,1fr) auto !important;
-  }
-
-  body[data-page="checklist"] .topbar > div:first-child{
-    display:flex;
-    flex-direction:column;
-    align-items:flex-start;
-  }
-
-  body[data-page="checklist"] .topbar h1{
-    font-size:27px !important;
-  }
-
-  body[data-page="checklist"] .topbar [class*="progress"],
-  body[data-page="checklist"] .topbar .progress-label{
+  .topbar .site-actions,
+  .topbar .topbar-actions,
+  .builder-topbar .site-actions,
+  .builder-topbar .builder-actions{
+    grid-area:actions !important;
     position:static !important;
-    margin-top:4px !important;
-    font-size:12px !important;
-    line-height:1.1 !important;
-    white-space:nowrap;
-  }
-
-  /* Invitation page: preview action sits beneath heading if needed */
-  body[data-page="invitations"] .topbar{
-    grid-template-columns:52px minmax(0,1fr) !important;
-  }
-
-  body[data-page="invitations"] .topbar .site-actions{
-    grid-column:2;
-    justify-content:flex-start;
-    margin-top:4px;
-  }
-
-  body[data-page="invitations"] .topbar h1{
-    font-size:26px !important;
-  }
-
-  /* Seating / budget: large primary actions move below title */
-  body[data-page="seating"] .topbar,
-  body[data-page="budget"] .topbar{
-    grid-template-columns:52px minmax(0,1fr) !important;
-  }
-
-  body[data-page="seating"] .topbar .site-actions,
-  body[data-page="budget"] .topbar .site-actions{
-    grid-column:2;
-    justify-content:flex-start;
-    width:100%;
-    margin-top:5px;
-  }
-
-  body[data-page="seating"] .topbar .site-actions .btn,
-  body[data-page="budget"] .topbar .site-actions .btn{
-    flex:0 0 auto;
-  }
-
-  body[data-page="seating"] .topbar h1,
-  body[data-page="budget"] .topbar h1{
-    font-size:26px !important;
-  }
-
-  /* Website Studio gets a dedicated compact header */
-  body[data-page="builder"] .builder-topbar{
-    display:grid !important;
-    grid-template-columns:52px minmax(0,1fr) !important;
+    display:flex !important;
+    flex-wrap:wrap !important;
     align-items:center !important;
-    gap:10px !important;
-    padding:14px 12px !important;
-    min-height:78px !important;
+    justify-content:flex-start !important;
+    gap:8px !important;
+    width:100% !important;
+    min-width:0 !important;
+    margin:0 !important;
+    padding-left:60px !important;
+    z-index:6 !important;
   }
 
-  body[data-page="builder"] .builder-topbar h1{
-    font-size:24px !important;
-    line-height:1.05 !important;
-    white-space:normal !important;
+  .topbar .btn,
+  .builder-topbar .btn{
+    position:relative !important;
+    z-index:7 !important;
+    flex:0 0 auto !important;
+    min-height:40px !important;
+    height:auto !important;
+    padding:9px 12px !important;
+    border-radius:12px !important;
+    font-size:11px !important;
+    line-height:1.1 !important;
+    white-space:nowrap !important;
+    pointer-events:auto !important;
   }
 
-  body[data-page="builder"] .builder-actions{
-    display:none !important;
+  .avatar{
+    position:static !important;
+    width:38px !important;
+    height:38px !important;
+    min-width:38px !important;
+    font-size:12px !important;
+    z-index:7 !important;
+  }
+
+  /* Page content starts cleanly below header */
+  .app-content,
+  .builder-content{
+    padding:14px 12px 24px !important;
+    overflow-x:hidden !important;
+  }
+
+  /* Studio preview */
+  body[data-page="builder"] .builder-grid{
+    grid-template-columns:1fr !important;
+    gap:14px !important;
+  }
+
+  body[data-page="builder"] .builder-preview{
+    order:1 !important;
+    min-width:0 !important;
+  }
+
+  body[data-page="builder"] .builder-controls{
+    order:2 !important;
+    min-width:0 !important;
   }
 
   body[data-page="builder"] .preview-head{
-    display:grid !important;
-    grid-template-columns:110px minmax(0,1fr) !important;
-    gap:8px !important;
-    align-items:start !important;
-    padding:11px 12px !important;
+    display:block !important;
+    padding:12px !important;
   }
 
   body[data-page="builder"] [data-public-link]{
+    display:block !important;
+    margin-top:5px !important;
     font-size:11px !important;
     line-height:1.3 !important;
     white-space:normal !important;
     overflow-wrap:anywhere !important;
   }
 
-  /* Avoid content touching the header */
-  .app-content{
-    padding-top:14px !important;
+  body[data-page="builder"] .site-preview,
+  body[data-page="builder"] .preview-shell,
+  body[data-page="builder"] iframe{
+    width:100% !important;
+    max-width:100% !important;
+    min-width:0 !important;
+  }
+
+  /* Prevent large page cards from creating side-scroll */
+  .panel,
+  .table-card,
+  .welcome,
+  .metric,
+  .guest-card,
+  .supplier-card,
+  .budget-hero,
+  .rsvp-card{
+    min-width:0 !important;
+    max-width:100% !important;
+  }
+
+  /* Metrics remain neat */
+  .metric-grid{
+    grid-template-columns:repeat(2,minmax(0,1fr)) !important;
+    gap:10px !important;
+  }
+
+  /* Forms and two-column controls collapse */
+  .two-col,
+  .form-grid{
+    grid-template-columns:1fr !important;
+  }
+
+  /* Ensure actions inside cards are tappable */
+  button,
+  a.btn,
+  .icon-btn,
+  .text-link{
+    position:relative;
+    z-index:3;
+    pointer-events:auto !important;
+  }
+
+  /* Seating/budget/guest/event titles must never overlay action buttons */
+  body[data-page="seating"] .topbar h1,
+  body[data-page="budget"] .topbar h1,
+  body[data-page="guests"] .topbar h1,
+  body[data-page="events"] .topbar h1,
+  body[data-page="invitations"] .topbar h1,
+  body[data-page="checklist"] .topbar h1{
+    font-size:23px !important;
+  }
+
+  /* Checklist completion sits below title */
+  body[data-page="checklist"] .topbar [class*="progress"],
+  body[data-page="checklist"] .topbar .progress-label{
+    position:static !important;
+    display:block !important;
+    margin-top:4px !important;
+    font-size:12px !important;
+    line-height:1.15 !important;
+    white-space:normal !important;
+  }
+
+  /* Compact task/card headings */
+  .panel h2,
+  .panel h3,
+  .table-card h2,
+  .table-card h3{
+    line-height:1.08 !important;
   }
 }
 
 @media(max-width:390px){
-  .topbar h1{font-size:25px !important;}
-  body[data-page="checklist"] .topbar h1{font-size:25px !important;}
-  body[data-page="builder"] .builder-topbar h1{font-size:22px !important;}
+  .topbar h1,
+  .builder-topbar h1{
+    font-size:21px !important;
+  }
+
+  .topbar .site-actions,
+  .topbar .topbar-actions,
+  .builder-topbar .site-actions,
+  .builder-topbar .builder-actions{
+    padding-left:0 !important;
+  }
+
+  .topbar .btn,
+  .builder-topbar .btn{
+    font-size:10px !important;
+    padding:8px 10px !important;
+  }
+
+  .metric-grid{
+    grid-template-columns:1fr 1fr !important;
+  }
 }
