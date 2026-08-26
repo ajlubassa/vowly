@@ -368,3 +368,158 @@
     grid-template-columns:1fr;
   }
 }
+
+/* Stage 13.2 — calmer mobile page headers */
+@media(max-width:700px){
+  /* Give page titles their own breathing room instead of forcing everything into one row */
+  .topbar:not(.builder-topbar){
+    position:relative;
+    display:grid !important;
+    grid-template-columns:52px minmax(0,1fr) auto !important;
+    grid-template-areas:
+      "menu title logout"
+      "menu meta logout";
+    align-items:center !important;
+    column-gap:12px !important;
+    row-gap:3px !important;
+    min-height:96px !important;
+    padding:16px 14px !important;
+  }
+
+  .topbar:not(.builder-topbar) .mobile-menu-btn,
+  .topbar:not(.builder-topbar) [data-menu-toggle]{
+    grid-area:menu;
+    align-self:center;
+  }
+
+  .topbar:not(.builder-topbar) > div:first-of-type{
+    grid-area:title;
+    min-width:0;
+  }
+
+  .topbar:not(.builder-topbar) h1{
+    margin:0 !important;
+    font-size:clamp(28px,8vw,38px) !important;
+    line-height:1.02 !important;
+    letter-spacing:-.025em !important;
+    max-width:none !important;
+    white-space:normal !important;
+    overflow:visible !important;
+    text-overflow:clip !important;
+  }
+
+  .topbar:not(.builder-topbar) .topbar-meta,
+  .topbar:not(.builder-topbar) .page-meta,
+  .topbar:not(.builder-topbar) .progress-label{
+    grid-area:meta;
+    margin:0 !important;
+    font-size:13px !important;
+    line-height:1.2 !important;
+  }
+
+  .topbar:not(.builder-topbar) .topbar-actions,
+  .topbar:not(.builder-topbar) .site-actions{
+    grid-area:logout;
+    justify-self:end;
+    align-self:center;
+    display:flex;
+    gap:6px;
+  }
+
+  .topbar:not(.builder-topbar) .topbar-actions .btn,
+  .topbar:not(.builder-topbar) .site-actions .btn{
+    min-height:42px !important;
+    padding:9px 12px !important;
+    font-size:12px !important;
+    line-height:1.1 !important;
+    border-radius:14px !important;
+  }
+
+  /* Checklist: keep title and completion status visually separate */
+  body[data-page="checklist"] .topbar{
+    grid-template-columns:52px minmax(0,1fr) auto !important;
+  }
+
+  body[data-page="checklist"] .topbar h1{
+    font-size:32px !important;
+    line-height:1 !important;
+  }
+
+  body[data-page="checklist"] .topbar .progress-label,
+  body[data-page="checklist"] .topbar [class*="progress"]{
+    font-size:15px !important;
+    line-height:1.1 !important;
+    white-space:nowrap;
+  }
+
+  /* Website Studio: title no longer competes with controls */
+  body[data-page="builder"] .builder-topbar{
+    grid-template-columns:52px minmax(0,1fr) !important;
+    grid-template-areas:
+      "menu studio"
+      "menu title" !important;
+    gap:2px 12px !important;
+    padding:14px !important;
+    min-height:88px !important;
+  }
+
+  body[data-page="builder"] .builder-topbar .mobile-menu-btn,
+  body[data-page="builder"] .builder-topbar [data-menu-toggle]{
+    grid-area:menu;
+  }
+
+  body[data-page="builder"] .builder-topbar > div:first-of-type{
+    grid-area:studio;
+    min-width:0;
+  }
+
+  body[data-page="builder"] .builder-mobile-kicker{
+    display:block;
+    font-size:10px !important;
+    letter-spacing:.16em !important;
+    margin:0 0 3px !important;
+  }
+
+  body[data-page="builder"] .builder-topbar h1{
+    font-size:25px !important;
+    line-height:1.05 !important;
+    white-space:normal !important;
+    overflow:visible !important;
+    text-overflow:clip !important;
+  }
+
+  body[data-page="builder"] .builder-actions{
+    display:none !important;
+  }
+
+  body[data-page="builder"] .preview-head{
+    padding:12px 14px !important;
+    gap:6px !important;
+  }
+
+  body[data-page="builder"] .preview-head > :first-child{
+    font-size:13px !important;
+    font-weight:700;
+  }
+
+  body[data-page="builder"] [data-public-link]{
+    display:block;
+    width:100%;
+    font-size:11px !important;
+    line-height:1.3;
+    white-space:normal !important;
+    overflow-wrap:anywhere;
+  }
+}
+
+@media(max-width:390px){
+  .topbar:not(.builder-topbar) h1{
+    font-size:28px !important;
+  }
+  body[data-page="checklist"] .topbar h1{
+    font-size:29px !important;
+  }
+  body[data-page="builder"] .builder-topbar h1{
+    font-size:22px !important;
+  }
+}

@@ -1,23 +1,13 @@
-# Vowly Stage 13.1 — Website Studio mobile polish
+# Vowly Stage 13.2 — Mobile heading polish
 
-This patch tidies the Website Studio on phones.
+This patch specifically fixes the cramped mobile headings.
 
-Changes:
-- Compact sticky mobile header
-- Cleaner Website Studio title
-- Preview button fits properly
-- Publish button hidden from the cramped mobile top bar
-- Guest preview comes first on mobile
-- Controls move below preview
-- Better spacing, rounded cards and mobile proportions
-- Preview URL no longer overflows
-- Mobile preview typography is scaled down cleanly
+- Page headings get more vertical space.
+- Checklist title and completion status no longer fight for the same line.
+- Website Studio heading is separated from its actions.
+- Studio action buttons are removed from the tiny mobile header.
+- Guest preview label and URL wrap cleanly.
+- Smaller phones receive slightly reduced heading sizes.
 
-Deploy:
-1. Upload all Stage 13.1 files to the existing GitHub repository.
-2. Replace current files.
-3. Commit:
-   `Vowly Stage 13.1 mobile studio polish`
-4. Keep Railway `/data` unchanged.
-5. Wait for Railway Online.
-6. On phone, refresh the Vowly page once.
+Deploy all files over the current GitHub version and commit:
+`Vowly Stage 13.2 mobile heading polish`
