@@ -188,3 +188,183 @@
  .panel,.form-card{padding:18px}.site-actions .btn{padding:9px 12px;font-size:12px}.avatar{width:36px;height:36px}
 }
 @media(max-width:560px){.quick-actions{grid-template-columns:1fr}.dashboard-hero{margin-bottom:14px}.metric-grid,.dashboard-grid{gap:12px}.metric{padding:16px}.metric-value{font-size:30px}.site-actions{gap:7px}}
+
+/* Stage 13.1 — Website Studio mobile polish */
+@media(max-width:700px){
+  body[data-page="builder"] .app-main{
+    overflow-x:hidden;
+  }
+
+  body[data-page="builder"] .builder-topbar{
+    position:sticky;
+    top:0;
+    z-index:20;
+    display:grid;
+    grid-template-columns:auto 1fr;
+    align-items:center;
+    gap:10px;
+    padding:12px 14px;
+    min-height:auto;
+    background:rgba(248,245,241,.96);
+    backdrop-filter:blur(10px);
+    border-bottom:1px solid var(--line);
+  }
+
+  body[data-page="builder"] .builder-topbar > div:first-child{
+    min-width:0;
+  }
+
+  body[data-page="builder"] .builder-topbar h1{
+    font-size:20px;
+    line-height:1.05;
+    margin:0;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
+
+  body[data-page="builder"] .builder-mobile-kicker{
+    font-size:9px;
+    letter-spacing:.14em;
+    margin-bottom:2px;
+  }
+
+  body[data-page="builder"] .builder-actions{
+    display:flex;
+    justify-content:flex-end;
+    align-items:center;
+    gap:6px;
+    min-width:0;
+  }
+
+  body[data-page="builder"] .builder-actions .btn{
+    min-height:38px;
+    padding:8px 11px;
+    font-size:11px;
+    border-radius:12px;
+    white-space:nowrap;
+  }
+
+  body[data-page="builder"] .builder-actions [data-save]{
+    display:none;
+  }
+
+  body[data-page="builder"] .builder-content{
+    padding:12px;
+  }
+
+  body[data-page="builder"] .builder-grid{
+    grid-template-columns:1fr !important;
+    gap:14px;
+  }
+
+  body[data-page="builder"] .builder-controls{
+    order:2;
+  }
+
+  body[data-page="builder"] .builder-preview{
+    order:1;
+    min-width:0;
+  }
+
+  body[data-page="builder"] .builder-preview > .panel,
+  body[data-page="builder"] .preview-shell,
+  body[data-page="builder"] .site-preview,
+  body[data-page="builder"] iframe{
+    width:100% !important;
+    max-width:100% !important;
+  }
+
+  body[data-page="builder"] .preview-shell{
+    border-radius:18px;
+    overflow:hidden;
+  }
+
+  body[data-page="builder"] .preview-head{
+    display:flex;
+    flex-direction:column;
+    align-items:flex-start;
+    gap:4px;
+    padding:10px 12px;
+  }
+
+  body[data-page="builder"] .preview-head > *{
+    max-width:100%;
+  }
+
+  body[data-page="builder"] [data-public-link]{
+    font-size:11px;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+    max-width:100%;
+  }
+
+  body[data-page="builder"] .site-preview{
+    min-height:auto;
+  }
+
+  body[data-page="builder"] .site-preview .public-shell,
+  body[data-page="builder"] .site-preview .public-card{
+    border-radius:18px;
+  }
+
+  body[data-page="builder"] .site-preview h1{
+    font-size:clamp(36px,11vw,54px) !important;
+    line-height:.95 !important;
+  }
+
+  body[data-page="builder"] .site-preview .hero{
+    min-height:620px;
+    padding:34px 18px 40px;
+  }
+
+  body[data-page="builder"] .site-preview .public-nav{
+    padding:14px 16px;
+  }
+
+  body[data-page="builder"] .site-preview .public-nav > :first-child{
+    font-size:18px;
+  }
+
+  body[data-page="builder"] .site-preview .public-nav > :last-child{
+    font-size:12px;
+  }
+
+  body[data-page="builder"] .panel,
+  body[data-page="builder"] .form-card{
+    border-radius:18px;
+  }
+
+  body[data-page="builder"] .two-col{
+    grid-template-columns:1fr;
+  }
+
+  body[data-page="builder"] .style-options{
+    grid-template-columns:1fr 1fr;
+  }
+}
+
+@media(max-width:430px){
+  body[data-page="builder"] .builder-topbar{
+    grid-template-columns:auto 1fr;
+    padding:10px 10px;
+  }
+
+  body[data-page="builder"] .builder-topbar h1{
+    font-size:18px;
+  }
+
+  body[data-page="builder"] .builder-actions .btn{
+    padding:8px 9px;
+    font-size:10px;
+  }
+
+  body[data-page="builder"] .builder-content{
+    padding:8px;
+  }
+
+  body[data-page="builder"] .style-options{
+    grid-template-columns:1fr;
+  }
+}
