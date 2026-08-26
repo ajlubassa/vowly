@@ -3,6 +3,10 @@
 import re, urllib.parse
 from datetime import datetime, timezone
 from http.server import ThreadingHTTPServer
+
+import migrate_db
+migrate_db.migrate()
+
 import server as legacy
 import ceremli_server as core
 import ceremli_rsvp_server as rsvp_core
@@ -46,7 +50,7 @@ class CeremliHouseholdRSVPApp(rsvp_core.CeremliRSVPApp):
                         rows=c.execute('SELECT * FROM guests WHERE wedding_id=? AND household_id=? ORDER BY name',(w['id'],h['id'])).fetchall()
                         members=[guest_payload(c,x,w['id']) for x in rows]
                 if not members:members=[guest_payload(c,guest,w['id'])]
-            return self.send_json({'guest':guest_payload(legacy.conn(),guest,w['id']) if False else members[0],'household':household,'members':members})
+            return self.send_json({'guest':members[0],'household':household,'members':members})
 
         m=re.fullmatch(r'/api/public/wedding/([^/]+)/household-rsvp',path)
         if m:
