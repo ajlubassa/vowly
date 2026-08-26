@@ -1,15 +1,15 @@
-# Put Vowly online from an iPhone (Railway)
+# Put Ceremli online from an iPhone (Railway)
 
-This Stage 5 package is prepared for Railway.
+This Ceremli package is prepared for Railway.
 
 ## What you need
 - A GitHub account
 - A Railway account
-- This Vowly Stage 5 folder uploaded to a GitHub repository
+- This Ceremli project uploaded to a GitHub repository
 
 ## Railway setup
 1. In Railway, create a new project from your GitHub repository.
-2. Select the Vowly repository as the service source.
+2. Select the Ceremli repository as the service source.
 3. Railway will build from the included `Dockerfile` / `railway.toml`.
 4. Add a Volume to the web service and mount it at `/data`.
 5. In the service Variables tab add:
