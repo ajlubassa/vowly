@@ -7,7 +7,7 @@ import server as core
 import ceremli_events_server as events
 
 PLAN_RANK={'free':0,'premium':1,'ultimate':2}
-PREMIUM_POST={'/api/invitations/send','/api/reminders/send'}
+PREMIUM_POST={'/api/reminders/send'}
 
 def allowed(plan,minimum): return PLAN_RANK.get(plan or 'free',0)>=PLAN_RANK[minimum]
 def rows(c,sql,args=()): return [dict(x) for x in c.execute(sql,args).fetchall()]
