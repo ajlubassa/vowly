@@ -3,6 +3,12 @@
 import re, urllib.parse
 from datetime import datetime, timezone
 from http.server import ThreadingHTTPServer
+
+# Migrate the SQLite database from the old ephemeral /app location to the
+# new persistent /data volume (if needed) before anything touches the DB.
+import migrate_db
+migrate_db.migrate()
+
 import server as legacy
 import ceremli_server as core
 import ceremli_rsvp_server as rsvp_core
