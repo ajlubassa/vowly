@@ -1,13 +1,17 @@
-# Vowly Stage 13.2 — Mobile heading polish
+# Vowly Stage 13.3 — Mobile header regression fix
 
-This patch specifically fixes the cramped mobile headings.
+This patch removes the overly broad Stage 13.2 header rules and replaces them with page-specific mobile headers.
 
-- Page headings get more vertical space.
-- Checklist title and completion status no longer fight for the same line.
-- Website Studio heading is separated from its actions.
-- Studio action buttons are removed from the tiny mobile header.
-- Guest preview label and URL wrap cleanly.
-- Smaller phones receive slightly reduced heading sizes.
+Fixes:
+- Dashboard heading no longer crops
+- Checklist title/progress no longer collide
+- Invitations heading and preview button no longer overlap
+- Seating title/add-table controls no longer overlap
+- Budget title/add-expense controls no longer overlap
+- Website Studio heading no longer runs off-screen
+- More consistent spacing across mobile pages
 
-Deploy all files over the current GitHub version and commit:
-`Vowly Stage 13.2 mobile heading polish`
+Deploy over the current repository and commit:
+`Vowly Stage 13.3 mobile header regression fix`
+
+Wait for Railway to be Online, then refresh on phone.

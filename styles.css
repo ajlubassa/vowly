@@ -369,9 +369,7 @@
   }
 }
 
-/* Stage 13.2 — calmer mobile page headers */
-@media(max-width:700px){
-  /* Give page titles their own breathing room instead of forcing everything into one row */
+/* Give page titles their own breathing room instead of forcing everything into one row */
   .topbar:not(.builder-topbar){
     position:relative;
     display:grid !important;
@@ -522,4 +520,171 @@
   body[data-page="builder"] .builder-topbar h1{
     font-size:22px !important;
   }
+}
+
+/* Stage 13.3 — stable mobile headers */
+@media(max-width:700px){
+
+  /* Generic app header */
+  .topbar{
+    display:grid !important;
+    grid-template-columns:52px minmax(0,1fr) auto !important;
+    align-items:center !important;
+    gap:10px !important;
+    padding:14px 12px !important;
+    min-height:78px !important;
+    overflow:visible !important;
+  }
+
+  .topbar > div:first-child{
+    min-width:0;
+  }
+
+  .topbar h1{
+    margin:0 !important;
+    font-size:28px !important;
+    line-height:1.05 !important;
+    white-space:normal !important;
+    overflow:visible !important;
+    text-overflow:clip !important;
+  }
+
+  .topbar .eyebrow{
+    display:block;
+    margin-bottom:4px;
+    font-size:9px !important;
+    line-height:1.15 !important;
+    letter-spacing:.14em !important;
+  }
+
+  .topbar .site-actions{
+    display:flex !important;
+    align-items:center;
+    justify-content:flex-end;
+    gap:6px;
+    flex-wrap:wrap;
+  }
+
+  .topbar .site-actions .btn{
+    min-height:40px !important;
+    padding:8px 11px !important;
+    font-size:11px !important;
+    line-height:1.05 !important;
+    border-radius:13px !important;
+    white-space:nowrap;
+  }
+
+  /* Dashboard: title stays compact */
+  body[data-page="dashboard"] .topbar h1{
+    font-size:27px !important;
+  }
+
+  /* Checklist: progress moves below title */
+  body[data-page="checklist"] .topbar{
+    grid-template-columns:52px minmax(0,1fr) auto !important;
+  }
+
+  body[data-page="checklist"] .topbar > div:first-child{
+    display:flex;
+    flex-direction:column;
+    align-items:flex-start;
+  }
+
+  body[data-page="checklist"] .topbar h1{
+    font-size:27px !important;
+  }
+
+  body[data-page="checklist"] .topbar [class*="progress"],
+  body[data-page="checklist"] .topbar .progress-label{
+    position:static !important;
+    margin-top:4px !important;
+    font-size:12px !important;
+    line-height:1.1 !important;
+    white-space:nowrap;
+  }
+
+  /* Invitation page: preview action sits beneath heading if needed */
+  body[data-page="invitations"] .topbar{
+    grid-template-columns:52px minmax(0,1fr) !important;
+  }
+
+  body[data-page="invitations"] .topbar .site-actions{
+    grid-column:2;
+    justify-content:flex-start;
+    margin-top:4px;
+  }
+
+  body[data-page="invitations"] .topbar h1{
+    font-size:26px !important;
+  }
+
+  /* Seating / budget: large primary actions move below title */
+  body[data-page="seating"] .topbar,
+  body[data-page="budget"] .topbar{
+    grid-template-columns:52px minmax(0,1fr) !important;
+  }
+
+  body[data-page="seating"] .topbar .site-actions,
+  body[data-page="budget"] .topbar .site-actions{
+    grid-column:2;
+    justify-content:flex-start;
+    width:100%;
+    margin-top:5px;
+  }
+
+  body[data-page="seating"] .topbar .site-actions .btn,
+  body[data-page="budget"] .topbar .site-actions .btn{
+    flex:0 0 auto;
+  }
+
+  body[data-page="seating"] .topbar h1,
+  body[data-page="budget"] .topbar h1{
+    font-size:26px !important;
+  }
+
+  /* Website Studio gets a dedicated compact header */
+  body[data-page="builder"] .builder-topbar{
+    display:grid !important;
+    grid-template-columns:52px minmax(0,1fr) !important;
+    align-items:center !important;
+    gap:10px !important;
+    padding:14px 12px !important;
+    min-height:78px !important;
+  }
+
+  body[data-page="builder"] .builder-topbar h1{
+    font-size:24px !important;
+    line-height:1.05 !important;
+    white-space:normal !important;
+  }
+
+  body[data-page="builder"] .builder-actions{
+    display:none !important;
+  }
+
+  body[data-page="builder"] .preview-head{
+    display:grid !important;
+    grid-template-columns:110px minmax(0,1fr) !important;
+    gap:8px !important;
+    align-items:start !important;
+    padding:11px 12px !important;
+  }
+
+  body[data-page="builder"] [data-public-link]{
+    font-size:11px !important;
+    line-height:1.3 !important;
+    white-space:normal !important;
+    overflow-wrap:anywhere !important;
+  }
+
+  /* Avoid content touching the header */
+  .app-content{
+    padding-top:14px !important;
+  }
+}
+
+@media(max-width:390px){
+  .topbar h1{font-size:25px !important;}
+  body[data-page="checklist"] .topbar h1{font-size:25px !important;}
+  body[data-page="builder"] .builder-topbar h1{font-size:22px !important;}
 }
