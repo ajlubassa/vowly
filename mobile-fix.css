@@ -1,0 +1,24 @@
+/* Ceremli mobile layout hardening */
+html,body{max-width:100%;overflow-x:hidden}
+img{max-width:100%;height:auto}
+@media(max-width:900px){
+  .studio-layout{display:flex!important;flex-direction:column!important;width:100%!important;max-width:100%!important;padding:16px!important;gap:18px!important;overflow:visible!important}
+  .studio-controls{display:grid!important;grid-template-columns:1fr!important;gap:16px!important;order:1!important;width:100%!important;max-width:100%!important;min-width:0!important}
+  .studio-preview-wrap{position:static!important;order:2!important;width:100%!important;max-width:100%!important;min-width:0!important}
+  .form-card{display:block!important;width:100%!important;max-width:100%!important;min-width:0!important;overflow:hidden!important}
+  .site-preview{width:100%!important;max-width:100%!important;min-width:0!important;overflow:hidden!important}
+  .builder-topbar{height:auto!important;min-height:78px!important;padding:18px!important;gap:14px!important;align-items:flex-start!important;flex-wrap:wrap!important}
+  .builder-actions{width:100%!important;display:flex!important;gap:10px!important;flex-wrap:wrap!important}
+  .builder-actions .btn{max-width:100%!important}
+  [data-party-list],[data-gallery-list],[data-party-form]{width:100%!important;max-width:100%!important;min-width:0!important}
+  .party-preview-card img,.gallery-edit-item img,.public-party-card img,.public-gallery-item img{max-width:100%!important;object-fit:cover!important}
+}
+@media(max-width:560px){
+  .app-content.studio-layout{padding:12px!important}
+  .builder-topbar h1{font-size:30px!important;line-height:1.05!important}
+  .builder-actions .btn{flex:1 1 auto!important;min-height:46px!important}
+  .theme-grid{grid-template-columns:1fr!important}
+  .toggle-list{grid-template-columns:1fr!important}
+  .site-preview .pv-hero{padding:48px 16px!important}
+  .site-preview .pv-section{padding:36px 16px!important}
+}
