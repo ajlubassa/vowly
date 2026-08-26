@@ -1,6 +1,6 @@
-# Vowly V1.0
+# Ceremli V1.0
 
-Vowly is a wedding planning platform with:
+Ceremli is a wedding planning platform with:
 - couple accounts and secure sessions
 - wedding dashboard
 - guest and household management
