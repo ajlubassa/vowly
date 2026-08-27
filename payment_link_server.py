@@ -40,12 +40,24 @@ def parse_ref(ref):
         return None
 
 
+def payment_link_checkout(plan, user_id):
+    """Fallback used by the legacy core billing route: never calls Stripe API."""
+    link=PAYMENT_LINKS.get(str(plan).lower())
+    if not link:return None
+    ref=make_ref(int(user_id),str(plan).lower())
+    qs=urllib.parse.urlencode({'client_reference_id':ref})
+    return {'url':f'{link}?{qs}'}
+
+# stripe_checkout_server monkeypatches core.stripe_checkout on import. Override it
+# again here so even a legacy/fall-through billing handler returns our Payment Link
+# instead of attempting the broken Stripe API credential.
+core.stripe_checkout=payment_link_checkout
+
+
 class PaymentLinkApp(launch.CeremliLaunchApp):
     def do_POST(self):
         path=urllib.parse.urlparse(self.path).path
 
-        # Create an account-bound Payment Link URL server-side. The browser never
-        # decides which Ceremli user a payment belongs to.
         if path=='/api/billing/checkout':
             a=self.require(csrf=True)
             if not a:return
@@ -54,6 +66,7 @@ class PaymentLinkApp(launch.CeremliLaunchApp):
             if not link:return self.send_json({'error':'Unknown plan'},400)
             ref=make_ref(a['user_id'],plan)
             qs=urllib.parse.urlencode({'client_reference_id':ref,'prefilled_email':a['email']})
+            print(f'[stripe-link] checkout user={a["user_id"]} plan={plan}',flush=True)
             return self.send_json({'url':f'{link}?{qs}'})
 
         if path!='/api/stripe/webhook':
