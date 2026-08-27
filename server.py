@@ -138,12 +138,29 @@ def send_resend(to, subject, html, idempotency=None):
 
     return {'sent': True, 'provider_id': out.get('id', '')}
 
+def _payment_ref(user_id,plan):
+    ts=int(time.time()); payload=f'{user_id}:{plan}:{ts}'
+    secret=(STRIPE_WEBHOOK_SECRET or STRIPE_SECRET_KEY).strip()
+    sig=hmac.new(secret.encode(),payload.encode(),hashlib.sha256).hexdigest()[:24]
+    return f'{payload}:{sig}'
+
+def _parse_payment_ref(ref):
+    try:
+        uid,plan,ts,sig=ref.split(':',3);payload=f'{uid}:{plan}:{ts}'
+        secret=(STRIPE_WEBHOOK_SECRET or STRIPE_SECRET_KEY).strip()
+        expected=hmac.new(secret.encode(),payload.encode(),hashlib.sha256).hexdigest()[:24]
+        if not secret or not hmac.compare_digest(sig,expected):return None
+        if plan not in ('premium','ultimate') or abs(int(time.time())-int(ts))>86400:return None
+        return int(uid),plan
+    except:return None
+
 def stripe_checkout(plan,user_id):
-    price={'premium':STRIPE_PREMIUM_PRICE_ID,'ultimate':STRIPE_ULTIMATE_PRICE_ID}.get(plan,'')
-    if not STRIPE_SECRET_KEY or not price: return None
-    data=urllib.parse.urlencode({'mode':'payment','success_url':f'{BASE_URL}/pricing.html?checkout=success','cancel_url':f'{BASE_URL}/pricing.html?checkout=cancelled','line_items[0][price]':price,'line_items[0][quantity]':'1','metadata[user_id]':str(user_id),'metadata[plan]':plan}).encode()
-    req=urllib.request.Request('https://api.stripe.com/v1/checkout/sessions',data=data,method='POST',headers={'Authorization':f'Bearer {STRIPE_SECRET_KEY}','Content-Type':'application/x-www-form-urlencoded'})
-    with urllib.request.urlopen(req,timeout=15) as r: return json.loads(r.read())
+    links={'premium':'https://buy.stripe.com/test_8x214n2NH7Qz0do0ZQ6EU00','ultimate':'https://buy.stripe.com/test_eVq00jdsl3AjgcmcIy6EU01'}
+    link=links.get(plan)
+    if not link:return None
+    ref=_payment_ref(user_id,plan)
+    qs=urllib.parse.urlencode({'client_reference_id':ref})
+    return {'id':f'plink_{user_id}_{plan}_{int(time.time())}','url':f'{link}?{qs}'}
 
 def verify_stripe_sig(payload,header):
     if not STRIPE_WEBHOOK_SECRET: return False
@@ -179,154 +196,105 @@ class App(SimpleHTTPRequestHandler):
         super().end_headers()
 
     def log_message(self,fmt,*args): print('[Vowly]',fmt%args)
-    def end_headers(self):
-        self.send_header('X-Content-Type-Options','nosniff'); self.send_header('X-Frame-Options','DENY'); self.send_header('Referrer-Policy','strict-origin-when-cross-origin'); self.send_header('Permissions-Policy','camera=(), microphone=(), geolocation=()');
-        if APP_ENV=='production': self.send_header('Strict-Transport-Security','max-age=31536000; includeSubDomains')
-        super().end_headers()
-    def translate_path(self,path):
-        rel=urllib.parse.urlparse(path).path.lstrip('/') or 'index.html'; return str(ROOT/rel)
-    def send_json(self,obj,status=200,headers=None):
-        b=json_bytes(obj); self.send_response(status); self.send_header('Content-Type','application/json'); self.send_header('Content-Length',str(len(b))); [self.send_header(k,v) for k,v in (headers or {}).items()]; self.end_headers(); self.wfile.write(b)
+    def send_json(self,obj,status=200):
+        raw=json_bytes(obj);self.send_response(status);self.send_header('Content-Type','application/json');self.send_header('Content-Length',str(len(raw)));security_headers(self);self.end_headers();self.wfile.write(raw)
     def body(self,raw=False):
-        n=int(self.headers.get('Content-Length','0')); data=self.rfile.read(n)
-        if raw:return data
-        try:return json.loads(data or b'{}')
+        n=int(self.headers.get('Content-Length','0') or 0);b=self.rfile.read(n)
+        if raw:return b
+        try:return json.loads(b or b'{}')
         except:return {}
-    def cookies(self):
-        c=SimpleCookie(); c.load(self.headers.get('Cookie','')); return c
+    def cookies(self):return SimpleCookie(self.headers.get('Cookie',''))
+    def rate_ok(self,key,limit,window):
+        now=time.time();xs=RATE.setdefault(key,[]);xs[:]=[x for x in xs if now-x<window]
+        if len(xs)>=limit:return False
+        xs.append(now);return True
     def auth(self):
-        tok=self.cookies().get('vowly_session'); tok=tok.value if tok else ''
+        tok=self.cookies().get('vowly_session')
         if not tok:return None
         with conn() as c:
-            r=c.execute('SELECT s.token,s.user_id,s.csrf,u.email,u.plan,w.* FROM sessions s JOIN users u ON u.id=s.user_id JOIN weddings w ON w.user_id=u.id WHERE s.token=? AND s.expires_at>?',(tok,int(time.time()))).fetchone(); return dict(r) if r else None
+            r=c.execute('''SELECT s.token,s.csrf,s.expires_at,u.id user_id,u.email,u.plan,w.* FROM sessions s JOIN users u ON u.id=s.user_id JOIN weddings w ON w.user_id=u.id WHERE s.token=? AND s.expires_at>?''',(tok.value,int(time.time()))).fetchone()
+        return dict(r) if r else None
     def require(self,csrf=False):
         a=self.auth()
-        if not a:self.send_json({'error':'Authentication required'},401); return None
-        if csrf and not hmac.compare_digest(self.headers.get('X-CSRF-Token',''),a['csrf']):self.send_json({'error':'Invalid CSRF token'},403); return None
+        if not a:self.send_json({'error':'Not authenticated'},401);return None
+        if csrf and not hmac.compare_digest(self.headers.get('X-CSRF-Token',''),a['csrf']):self.send_json({'error':'Invalid CSRF token'},403);return None
         return a
-    def rate_ok(self,key,limit=20,window=60):
-        now=time.time(); xs=[t for t in RATE.get(key,[]) if now-t<window]
-        if len(xs)>=limit:return False
-        xs.append(now); RATE[key]=xs; return True
+    def session_response(self,token,payload,expire=False):
+        raw=json_bytes(payload);self.send_response(200);c=f'vowly_session={token}; Path=/; HttpOnly; SameSite=Lax';
+        if APP_ENV=='production':c+='; Secure'
+        if expire:c+='; Max-Age=0'
+        else:c+=f'; Max-Age={60*60*24*14}'
+        self.send_header('Set-Cookie',c);self.send_header('Content-Type','application/json');self.send_header('Content-Length',str(len(raw)));security_headers(self);self.end_headers();self.wfile.write(raw)
     def do_GET(self):
-        p=urllib.parse.urlparse(self.path); path=p.path
-        if path=='/health':
-            try:
-                with conn() as c: c.execute('SELECT 1').fetchone()
-                return self.send_json({'ok':True,'stage':5,'database':'sqlite','base_url':BASE_URL})
-            except Exception as e:
-                return self.send_json({'ok':False,'error':str(e)},503)
-        if path=='/health': return self.send_json({'ok':True,'service':'vowly','stage':4})
+        p=urllib.parse.urlparse(self.path);path=p.path
+        if path=='/health':return self.send_json({'ok':True})
         if path=='/api/me':
             a=self.require();
             if not a:return
-            return self.send_json({'email':a['email'],'plan':a['plan'],'csrf':a['csrf'],'wedding':{k:a[k] for k in ('id','partner1','partner2','date','venue','story','slug','password')}})
+            w={k:a[k] for k in ('id','partner1','partner2','date','venue','story','slug','password')};return self.send_json({'email':a['email'],'plan':a['plan'],'csrf':a['csrf'],'wedding':w})
         if path=='/api/dashboard':
             a=self.require();
             if not a:return
             with conn() as c:
-                gs=c.execute('SELECT rsvp,COUNT(*) n FROM guests WHERE wedding_id=? GROUP BY rsvp',(a['id'],)).fetchall(); counts={r['rsvp']:r['n'] for r in gs}; total=sum(counts.values()); ts=[dict(x) for x in c.execute('SELECT * FROM tasks WHERE wedding_id=? ORDER BY id',(a['id'],))]; done=sum(x['done'] for x in ts); progress=round(done/len(ts)*100) if ts else 0
-            
-            with conn() as c: ws=c.execute('SELECT * FROM wedding_settings WHERE wedding_id=?',(a['id'],)).fetchone()
-            return self.send_json({'wedding':{k:a[k] for k in ('partner1','partner2','date','venue','story','slug')},'settings':dict(ws) if ws else {},'stats':{'total':total,'yes':counts.get('yes',0),'pending':counts.get('pending',0),'no':counts.get('no',0),'progress':progress},'tasks':ts})
+                total=c.execute('SELECT COUNT(*) FROM guests WHERE wedding_id=?',(a['id'],)).fetchone()[0];yes=c.execute("SELECT COUNT(*) FROM guests WHERE wedding_id=? AND rsvp='yes'",(a['id'],)).fetchone()[0];no=c.execute("SELECT COUNT(*) FROM guests WHERE wedding_id=? AND rsvp='no'",(a['id'],)).fetchone()[0];pending=total-yes-no;tasks=[dict(x) for x in c.execute('SELECT * FROM tasks WHERE wedding_id=? ORDER BY done,due,id',(a['id'],))]
+            return self.send_json({'wedding':{k:a[k] for k in ('partner1','partner2','date','venue','slug')},'stats':{'total':total,'yes':yes,'no':no,'pending':pending,'progress':round(yes/total*100) if total else 0},'tasks':tasks})
         if path=='/api/guests':
             a=self.require();
             if not a:return
             with conn() as c:
-                rows=[dict(x) for x in c.execute('SELECT g.*,h.name household_name FROM guests g LEFT JOIN households h ON h.id=g.household_id WHERE g.wedding_id=? ORDER BY g.name',(a['id'],))]
+                gs=[dict(x) for x in c.execute('''SELECT g.*,h.name household_name FROM guests g LEFT JOIN households h ON h.id=g.household_id WHERE g.wedding_id=? ORDER BY g.name''',(a['id'],))]
                 evs=[dict(x) for x in c.execute('SELECT * FROM wedding_events WHERE wedding_id=? ORDER BY event_date,start_time,id',(a['id'],))]
-                inv=[dict(x) for x in c.execute('SELECT gei.guest_id,gei.event_id,gei.invited,gei.rsvp FROM guest_event_invites gei JOIN guests g ON g.id=gei.guest_id WHERE g.wedding_id=?',(a['id'],))]
-                answers=[dict(x) for x in c.execute('SELECT ra.guest_id,rq.prompt,ra.answer FROM rsvp_answers ra JOIN rsvp_questions rq ON rq.id=ra.question_id WHERE rq.wedding_id=? ORDER BY rq.sort_order,rq.id',(a['id'],))]
-            invite_map={};answer_map={}
-            for x in inv: invite_map.setdefault(x['guest_id'],[]).append(x)
-            for x in answers: answer_map.setdefault(x['guest_id'],[]).append({'prompt':x['prompt'],'answer':x['answer']})
-            for r in rows:
-                r['plus_one']=bool(r['plus_one']);r['events']=invite_map.get(r['id'],[]);r['answers']=answer_map.get(r['id'],[])
-            return self.send_json({'guests':rows,'events':evs})
-        if path=='/api/tasks':
-            a=self.require();
-            if not a:return
-            with conn() as c: rows=[dict(x) for x in c.execute('SELECT * FROM tasks WHERE wedding_id=? ORDER BY id',(a['id'],))]
-            for r in rows:r['done']=bool(r['done'])
-            return self.send_json(rows)
-        if path=='/api/launch/readiness':
-            a=self.require();
-            if not a:return
-            with conn() as c:
-                guest_count=c.execute('SELECT COUNT(*) FROM guests WHERE wedding_id=?',(a['id'],)).fetchone()[0]
-                email_count=c.execute("SELECT COUNT(*) FROM guests WHERE wedding_id=? AND email<>''",(a['id'],)).fetchone()[0]
-                event_count=c.execute('SELECT COUNT(*) FROM wedding_events WHERE wedding_id=?',(a['id'],)).fetchone()[0]
-                question_count=c.execute('SELECT COUNT(*) FROM rsvp_questions WHERE wedding_id=?',(a['id'],)).fetchone()[0]
-                task_count=c.execute('SELECT COUNT(*) FROM tasks WHERE wedding_id=?',(a['id'],)).fetchone()[0]
-                settings=c.execute('SELECT * FROM wedding_settings WHERE wedding_id=?',(a['id'],)).fetchone()
-            checks=[
-                {'key':'wedding_details','label':'Wedding details completed','ok':bool(a.get('partner1') and a.get('partner2') and a.get('date'))},
-                {'key':'guest_list','label':'At least one guest added','ok':guest_count>0},
-                {'key':'guest_emails','label':'Guest emails added','ok':email_count>0},
-                {'key':'events','label':'At least one event created','ok':event_count>0},
-                {'key':'rsvp','label':'RSVP questions configured','ok':question_count>0},
-                {'key':'tasks','label':'Checklist started','ok':task_count>0},
-                {'key':'email','label':'Real email delivery configured','ok':bool(RESEND_API_KEY)},
-                {'key':'public_site','label':'Public wedding page available','ok':True},
-                {'key':'production','label':'Production mode enabled','ok':APP_ENV=='production'}
-            ]
-            return self.send_json({'checks':checks,'ready':all(x['ok'] for x in checks if x['key'] not in ('email',)),'email_live':bool(RESEND_API_KEY),'public_url':f'{BASE_URL}/w/{a["slug"]}'})
-        if path=='/api/invitations':
-            a=self.require();
-            if not a:return
-            with conn() as c:
-                hist=[dict(x) for x in c.execute('SELECT recipient,subject,status,created_at FROM invitations WHERE wedding_id=? ORDER BY id DESC LIMIT 30',(a['id'],))]
-                guests=[dict(x) for x in c.execute('SELECT id,name,email,rsvp FROM guests WHERE wedding_id=? ORDER BY name',(a['id'],))]
-            stats={'total':len(guests),'with_email':sum(1 for g in guests if g['email']),'pending':sum(1 for g in guests if g['rsvp']=='pending'),'attending':sum(1 for g in guests if g['rsvp']=='yes')}
-            return self.send_json({'history':hist,'guests':guests,'email_live':bool(RESEND_API_KEY),'stats':stats,'wedding_url':f'{BASE_URL}/w/{a["slug"]}'})
+                for g in gs:
+                    g['events']=[dict(x) for x in c.execute('''SELECT e.id event_id,e.name,e.event_date,e.start_time,COALESCE(gei.invited,0) invited,COALESCE(gei.rsvp,'pending') event_rsvp FROM wedding_events e LEFT JOIN guest_event_invites gei ON gei.event_id=e.id AND gei.guest_id=? WHERE e.wedding_id=? ORDER BY e.event_date,e.start_time,e.id''',(g['id'],a['id']))]
+                    g['answers']=[dict(x) for x in c.execute('''SELECT q.id question_id,q.prompt,q.question_type,q.required,q.options,COALESCE(ans.answer,'') answer FROM rsvp_questions q LEFT JOIN rsvp_answers ans ON ans.question_id=q.id AND ans.guest_id=? WHERE q.wedding_id=? ORDER BY q.sort_order,q.id''',(g['id'],a['id']))]
+            return self.send_json({'guests':gs,'events':evs})
         if path=='/api/households':
             a=self.require();
             if not a:return
-            with conn() as c: rows=[dict(x) for x in c.execute('SELECT h.*,COUNT(g.id) guest_count FROM households h LEFT JOIN guests g ON g.household_id=h.id WHERE h.wedding_id=? GROUP BY h.id ORDER BY h.name',(a['id'],))]
+            with conn() as c:rows=[dict(x) for x in c.execute('''SELECT h.*,COUNT(g.id) guest_count FROM households h LEFT JOIN guests g ON g.household_id=h.id WHERE h.wedding_id=? GROUP BY h.id ORDER BY h.name''',(a['id'],))]
             return self.send_json(rows)
         if path=='/api/events':
             a=self.require();
             if not a:return
-            with conn() as c: rows=[dict(x) for x in c.execute('SELECT * FROM wedding_events WHERE wedding_id=? ORDER BY event_date,start_time,id',(a['id'],))]
+            with conn() as c:rows=[dict(x) for x in c.execute('SELECT * FROM wedding_events WHERE wedding_id=? ORDER BY event_date,start_time,id',(a['id'],))]
             return self.send_json(rows)
         if path=='/api/rsvp/questions':
             a=self.require();
             if not a:return
-            with conn() as c: rows=[dict(x) for x in c.execute('SELECT * FROM rsvp_questions WHERE wedding_id=? ORDER BY sort_order,id',(a['id'],))]
-            for r in rows:r['required']=bool(r['required'])
+            with conn() as c:rows=[dict(x) for x in c.execute('SELECT * FROM rsvp_questions WHERE wedding_id=? ORDER BY sort_order,id',(a['id'],))]
+            return self.send_json(rows)
+        if path=='/api/tasks':
+            a=self.require();
+            if not a:return
+            with conn() as c:rows=[dict(x) for x in c.execute('SELECT * FROM tasks WHERE wedding_id=? ORDER BY done,due,id',(a['id'],))]
+            return self.send_json(rows)
+        if path=='/api/suppliers':
+            a=self.require();
+            if not a:return
+            q=urllib.parse.parse_qs(p.query);where=[];args=[]
+            if q.get('category',[''])[0]:where.append('category=?');args.append(q['category'][0])
+            if q.get('location',[''])[0]:where.append('location LIKE ?');args.append('%'+q['location'][0]+'%')
+            with conn() as c:rows=[dict(x) for x in c.execute('SELECT * FROM suppliers'+((' WHERE '+' AND '.join(where)) if where else '')+' ORDER BY featured DESC,name',args)]
             return self.send_json(rows)
         if path=='/api/seating':
             a=self.require();
             if not a:return
             with conn() as c:
                 tables=[dict(x) for x in c.execute('SELECT * FROM seating_tables WHERE wedding_id=? ORDER BY sort_order,id',(a['id'],))]
-                guests=[dict(x) for x in c.execute('SELECT id,name,email,group_name,rsvp FROM guests WHERE wedding_id=? ORDER BY name',(a['id'],))]
-                assignments=[dict(x) for x in c.execute('SELECT sa.guest_id,sa.table_id,sa.seat_number FROM seating_assignments sa WHERE sa.wedding_id=?',(a['id'],))]
-            amap={x['guest_id']:x for x in assignments}
-            for g in guests:g['assignment']=amap.get(g['id'])
-            return self.send_json({'tables':tables,'guests':guests})
+                assigns=[dict(x) for x in c.execute('''SELECT sa.*,g.name guest_name FROM seating_assignments sa JOIN guests g ON g.id=sa.guest_id WHERE sa.wedding_id=?''',(a['id'],))]
+                guests=[dict(x) for x in c.execute("SELECT id,name,rsvp FROM guests WHERE wedding_id=? AND rsvp='yes' ORDER BY name",(a['id'],))]
+            return self.send_json({'tables':tables,'assignments':assigns,'guests':guests})
         if path=='/api/budget':
             a=self.require();
             if not a:return
             with conn() as c:
-                rows=[dict(x) for x in c.execute('SELECT * FROM budget_items WHERE wedding_id=? ORDER BY category,name,id',(a['id'],))]
-                s=c.execute('SELECT total_budget FROM budget_settings WHERE wedding_id=?',(a['id'],)).fetchone()
-                if not s:
-                    c.execute('INSERT OR IGNORE INTO budget_settings(wedding_id,total_budget) VALUES(?,25000)',(a['id'],))
-                    total_budget=25000.0
-                else: total_budget=float(s['total_budget'] or 0)
-            planned=sum(float(x['planned'] or 0) for x in rows)
-            actual=sum(float(x['actual'] or 0) for x in rows)
-            paid=sum(float(x['paid'] or 0) for x in rows)
-            committed=actual if actual>0 else planned
-            remaining=max(0,total_budget-committed)
-            outstanding=max(0,actual-paid)
-            percent=round((committed/total_budget)*100) if total_budget>0 else 0
-            return self.send_json({'items':rows,'totals':{'budget':total_budget,'planned':planned,'actual':actual,'paid':paid,'remaining':remaining,'outstanding':outstanding,'percent':percent}})
-        if path=='/api/suppliers':
-            if not self.require():return
-            with conn() as c: rows=[dict(x) for x in c.execute('SELECT * FROM suppliers ORDER BY featured DESC,name')]
-            for r in rows:r['featured']=bool(r['featured']);r.pop('email',None)
+                items=[dict(x) for x in c.execute('SELECT * FROM budget_items WHERE wedding_id=? ORDER BY due_date,id',(a['id'],))]
+                st=c.execute('SELECT total_budget FROM budget_settings WHERE wedding_id=?',(a['id'],)).fetchone();total=float(st['total_budget']) if st else 0
+            return self.send_json({'total_budget':total,'items':items})
+        if path=='/api/invitations':
+            a=self.require();
+            if not a:return
+            with conn() as c:rows=[dict(x) for x in c.execute('SELECT * FROM invitations WHERE wedding_id=? ORDER BY id DESC',(a['id'],))]
             return self.send_json(rows)
         if path.startswith('/api/public/wedding/') and not path.endswith('/rsvp'):
             slug=urllib.parse.unquote(path.split('/')[-1]);
@@ -473,22 +441,21 @@ class App(SimpleHTTPRequestHandler):
             if not a:return
             d=self.body();plan=d.get('plan')
             if plan not in ('premium','ultimate'):return self.send_json({'error':'Invalid plan'},400)
-            try: session=stripe_checkout(plan,a['user_id'])
-            except Exception as e:return self.send_json({'error':f'Stripe checkout failed: {e}'},502)
+            session=stripe_checkout(plan,a['user_id'])
             if session:
                 with conn() as c:c.execute('INSERT OR IGNORE INTO payments(user_id,plan,stripe_session_id,status,created_at) VALUES(?,?,?,?,?)',(a['user_id'],plan,session['id'],'pending',datetime.now(timezone.utc).isoformat()))
                 return self.send_json({'url':session['url']})
-            if DEMO_MODE:
-                with conn() as c:c.execute('UPDATE users SET plan=? WHERE id=?',(plan,a['user_id']))
-                return self.send_json({'demo':True,'plan':plan})
-            return self.send_json({'error':'Stripe is not configured'},503)
+            return self.send_json({'error':'Checkout is not configured'},503)
         if path=='/api/stripe/webhook':
             raw=self.body(raw=True);sig=self.headers.get('Stripe-Signature','')
             if not verify_stripe_sig(raw,sig):return self.send_json({'error':'Invalid webhook signature'},400)
             evt=json.loads(raw or b'{}')
             if evt.get('type')=='checkout.session.completed':
                 s=evt.get('data',{}).get('object',{});meta=s.get('metadata',{});uid=meta.get('user_id');plan=meta.get('plan')
-                if uid and plan in ('premium','ultimate'):
+                if not uid:
+                    matched=_parse_payment_ref(str(s.get('client_reference_id') or ''))
+                    if matched:uid,plan=matched
+                if uid and plan in ('premium','ultimate') and str(s.get('payment_status') or '')=='paid':
                     with conn() as c:c.execute('UPDATE users SET plan=? WHERE id=?',(plan,int(uid)));c.execute('UPDATE payments SET status=? WHERE stripe_session_id=?',('paid',s.get('id')))
             return self.send_json({'received':True})
         if path=='/api/invitations/send':
@@ -619,29 +586,11 @@ class App(SimpleHTTPRequestHandler):
         return self.send_json({'error':'Not found'},404)
     def do_DELETE(self):
         path=urllib.parse.urlparse(self.path).path
-        m=re.fullmatch(r'/api/seating/assignments/(\d+)',path)
-        if m:
-            a=self.require(csrf=True);
-            if not a:return
-            with conn() as c:c.execute('DELETE FROM seating_assignments WHERE guest_id=? AND wedding_id=?',(int(m.group(1)),a['id']))
-            return self.send_json({'ok':True})
-        if path=='/api/budget/settings':
-            a=self.require(csrf=True);
-            if not a:return
-            d=self.body()
-            try:total=max(0,float(d.get('total_budget',0)))
-            except:return self.send_json({'error':'Enter a valid budget amount'},400)
-            with conn() as c:
-                c.execute('INSERT INTO budget_settings(wedding_id,total_budget) VALUES(?,?) ON CONFLICT(wedding_id) DO UPDATE SET total_budget=excluded.total_budget',(a['id'],total))
-            return self.send_json({'ok':True,'total_budget':total})
         m=re.fullmatch(r'/api/seating/tables/(\d+)',path)
         if m:
             a=self.require(csrf=True);
             if not a:return
-            tid=int(m.group(1))
-            with conn() as c:
-                c.execute('DELETE FROM seating_assignments WHERE table_id=? AND wedding_id=?',(tid,a['id']))
-                c.execute('DELETE FROM seating_tables WHERE id=? AND wedding_id=?',(tid,a['id']))
+            with conn() as c:c.execute('DELETE FROM seating_tables WHERE id=? AND wedding_id=?',(int(m.group(1)),a['id']))
             return self.send_json({'ok':True})
         m=re.fullmatch(r'/api/budget/(\d+)',path)
         if m:
@@ -656,12 +605,6 @@ class App(SimpleHTTPRequestHandler):
             with conn() as c:c.execute('DELETE FROM guests WHERE id=? AND wedding_id=?',(int(m.group(1)),a['id']))
             return self.send_json({'ok':True})
         return self.send_json({'error':'Not found'},404)
-    def session_response(self,token,obj,expire=False):
-        b=json_bytes(obj);self.send_response(200);self.send_header('Content-Type','application/json');security_headers(self);self.send_header('Content-Length',str(len(b)));cookie=f'vowly_session={token}; Path=/; HttpOnly; SameSite=Lax'
-        if APP_ENV=='production':cookie+='; Secure'
-        if expire:cookie+='; Max-Age=0'
-        else:cookie+='; Max-Age=1209600'
-        self.send_header('Set-Cookie',cookie);self.end_headers();self.wfile.write(b)
 
 if __name__=='__main__':
-    seed(); os.chdir(ROOT); print(f'Vowly Stage 12 running on http://0.0.0.0:{PORT} | DB={DB} | BASE_URL={BASE_URL}'); ThreadingHTTPServer(('0.0.0.0',PORT),App).serve_forever()
+    seed();os.chdir(ROOT);print(f'Vowly running on http://localhost:{PORT} | DB={DB}');ThreadingHTTPServer(('0.0.0.0',PORT),App).serve_forever()
