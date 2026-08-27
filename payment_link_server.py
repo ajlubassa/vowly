@@ -10,6 +10,12 @@ import stripe_checkout_server as stripe_hardened
 PAYMENT_LINKS={'premium':'https://buy.stripe.com/test_8x214n2NH7Qz0do0ZQ6EU00','ultimate':'https://buy.stripe.com/test_eVq00jdsl3AjgcmcIy6EU01'}
 TOKEN_SECRET=(os.getenv('STRIPE_WEBHOOK_SECRET','') or os.getenv('STRIPE_SECRET_KEY','')).strip()
 
+def ensure_pending_table():
+    with core.conn() as c:
+        c.execute('''CREATE TABLE IF NOT EXISTS pending_checkouts(
+          id INTEGER PRIMARY KEY AUTOINCREMENT,user_id INTEGER NOT NULL,plan TEXT NOT NULL,
+          email TEXT NOT NULL,created_at INTEGER NOT NULL,consumed INTEGER NOT NULL DEFAULT 0)''')
+
 def make_ref(user_id,plan):
     ts=int(time.time()); payload=f'{user_id}:{plan}:{ts}'
     sig=hmac.new(TOKEN_SECRET.encode(),payload.encode(),hashlib.sha256).hexdigest()[:24]
@@ -38,8 +44,12 @@ class PaymentLinkApp(launch.CeremliLaunchApp):
             if not a:return
             d=self.body(); plan=str(d.get('plan','')).lower(); link=PAYMENT_LINKS.get(plan)
             if not link:return self.send_json({'error':'Unknown plan'},400)
+            email=str(a['email']).strip().lower(); now=int(time.time())
+            with core.conn() as c:
+                c.execute('DELETE FROM pending_checkouts WHERE created_at<? OR consumed=1',(now-86400,))
+                c.execute('INSERT INTO pending_checkouts(user_id,plan,email,created_at,consumed) VALUES(?,?,?,?,0)',(a['user_id'],plan,email,now))
             ref=make_ref(a['user_id'],plan)
-            qs=urllib.parse.urlencode({'client_reference_id':ref,'prefilled_email':a['email']})
+            qs=urllib.parse.urlencode({'client_reference_id':ref,'prefilled_email':email})
             print(f'[stripe-link] checkout user={a["user_id"]} plan={plan}',flush=True)
             return self.send_json({'url':f'{link}?{qs}'})
         if path!='/api/stripe/webhook':return super().do_POST()
@@ -48,24 +58,23 @@ class PaymentLinkApp(launch.CeremliLaunchApp):
         evt=json.loads(raw or b'{}'); et=evt.get('type'); print(f'[stripe-link] event={et}',flush=True)
         if et=='checkout.session.completed':
             s=evt.get('data',{}).get('object',{}); amount=int(s.get('amount_total') or 0); status=str(s.get('payment_status') or '')
-            plan={3900:'premium',6900:'ultimate'}.get(amount)
+            plan={3900:'premium',6900:'ultimate'}.get(amount); uid=None
             matched=parse_ref(str(s.get('client_reference_id') or ''))
-            uid=None
             if matched:
                 uid,ref_plan=matched
                 if plan!=ref_plan:uid=None
-            # Stripe Payment Links do not always preserve our account reference.
-            # Safe fallback for this one-payment product: require a paid session,
-            # exact known amount, and an exact unique Ceremli account email.
-            if uid is None and plan and status=='paid':
-                details=s.get('customer_details') or {}; email=str(details.get('email') or s.get('customer_email') or '').strip().lower()
-                if email:
-                    with core.conn() as c:
-                        rows=c.execute('SELECT id FROM users WHERE lower(email)=?',(email,)).fetchall()
-                    if len(rows)==1:uid=int(rows[0]['id'])
-                    print(f'[stripe-link] email fallback email_match={len(rows)} plan={plan}',flush=True)
+            details=s.get('customer_details') or {}; email=str(details.get('email') or s.get('customer_email') or '').strip().lower()
+            # Authoritative fallback: checkout ownership was persisted before leaving Ceremli.
+            if uid is None and plan and status=='paid' and email:
+                with core.conn() as c:
+                    row=c.execute('''SELECT id,user_id FROM pending_checkouts
+                      WHERE email=? AND plan=? AND consumed=0 AND created_at>=?
+                      ORDER BY id DESC LIMIT 1''',(email,plan,int(time.time())-86400)).fetchone()
+                    if row:
+                        uid=int(row['user_id']); c.execute('UPDATE pending_checkouts SET consumed=1 WHERE id=?',(row['id'],))
+                print(f'[stripe-link] pending checkout match={bool(uid)} plan={plan}',flush=True)
             if uid is None or not plan or status!='paid':
-                print(f'[stripe-link] ignored completed session ref={bool(s.get("client_reference_id"))} amount={amount} status={status}',flush=True)
+                print(f'[stripe-link] ignored completed session ref={bool(s.get("client_reference_id"))} email={bool(email)} amount={amount} status={status}',flush=True)
                 return self.send_json({'received':True})
             with core.conn() as c:
                 if not c.execute('SELECT id FROM users WHERE id=?',(uid,)).fetchone():return self.send_json({'received':True})
@@ -75,6 +84,6 @@ class PaymentLinkApp(launch.CeremliLaunchApp):
         return self.send_json({'received':True})
 
 if __name__=='__main__':
-    launch.migrate_launch(); core.os.chdir(core.ROOT)
+    launch.migrate_launch(); ensure_pending_table(); core.os.chdir(core.ROOT)
     print(f'Ceremli Payment Link server on {core.PORT} | DB={core.DB}',flush=True)
     ThreadingHTTPServer(('0.0.0.0',core.PORT),PaymentLinkApp).serve_forever()
