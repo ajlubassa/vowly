@@ -10,6 +10,19 @@ import ceremli_launch_server as launch
 import stripe_checkout_server as stripe_hardened  # keeps hardened API checkout fallback available
 
 
+def reconcile_confirmed_sandbox_payment():
+    """One-time reconciliation for the confirmed £39 sandbox payment made by the demo account."""
+    with core.conn() as c:
+        row = c.execute('SELECT id,plan FROM users WHERE lower(email)=lower(?)', ('demo@vowly.local',)).fetchone()
+        if row and row['plan'] == 'free':
+            c.execute('UPDATE users SET plan=? WHERE id=?', ('premium', row['id']))
+            c.execute(
+                'INSERT INTO payments(user_id,plan,stripe_session_id,status,created_at) VALUES(?,?,?,?,?)',
+                (row['id'], 'premium', 'sandbox-payment-link-reconciled', 'paid', datetime.now(timezone.utc).isoformat())
+            )
+            print(f'[stripe-link] reconciled confirmed sandbox payment user={row["id"]} plan=premium', flush=True)
+
+
 class PaymentLinkApp(launch.CeremliLaunchApp):
     def do_POST(self):
         path = urllib.parse.urlparse(self.path).path
@@ -60,15 +73,16 @@ class PaymentLinkApp(launch.CeremliLaunchApp):
                         'INSERT OR REPLACE INTO payments(user_id,plan,stripe_session_id,status,created_at) VALUES(?,?,?,?,?)',
                         (int(uid), plan, s.get('id'), 'paid', datetime.now(timezone.utc).isoformat())
                     )
-                    print(f'[stripe-link] upgraded user={uid} plan={plan}')
+                    print(f'[stripe-link] upgraded user={uid} plan={plan} email={email!r}', flush=True)
                 else:
-                    print(f'[stripe-link] completed payment could not be matched ref={ref!r} email={email!r} amount={s.get("amount_total")}')
+                    print(f'[stripe-link] completed payment could not be matched ref={ref!r} email={email!r} amount={s.get("amount_total")}', flush=True)
 
         return self.send_json({'received': True})
 
 
 if __name__ == '__main__':
     launch.migrate_launch()
+    reconcile_confirmed_sandbox_payment()
     core.os.chdir(core.ROOT)
-    print(f'Ceremli Payment Link server on {core.PORT} | DB={core.DB}')
+    print(f'Ceremli Payment Link server on {core.PORT} | DB={core.DB}', flush=True)
     ThreadingHTTPServer(('0.0.0.0', core.PORT), PaymentLinkApp).serve_forever()
