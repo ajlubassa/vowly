@@ -1,1 +1,1 @@
-web: python server.py
+web: python payment_link_server.py
