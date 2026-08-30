@@ -7,8 +7,8 @@ import server as core
 import ceremli_events_server as events
 
 PLAN_RANK={'free':0,'premium':1,'ultimate':2}
-# Core invitation sending is available to every plan; premium-only capabilities can be added here later.
-PREMIUM_POST=set()
+# Paid actions must be enforced on the server as well as in plan-entitlements.js.
+PREMIUM_POST={'/api/reminders/send'}
 REMOVED_PLANNING_PAGES={'/suppliers.html','/budget.html','/seating.html'}
 SIMPLIFIED_APP_PAGES={'/dashboard.html','/builder.html','/guests.html','/events.html','/questions.html','/invitations.html','/checklist.html','/pricing.html','/launch.html','/account.html'}
 REMOVED_NAV_LINKS=(
@@ -72,6 +72,14 @@ class CeremliLaunchApp(events.CeremliEventsApp):
 
     def do_PUT(self):
         path=urllib.parse.urlparse(self.path).path
+        if path=='/api/wedding/settings':
+            a=self.require(csrf=True)
+            if not a:return
+            d=self.body();requested=str(d.get('theme','editorial'))
+            # Editorial is free. Premium and Ultimate unlock the additional website designs.
+            if requested in ('romantic','modern') and not allowed(a['plan'],'premium'):
+                return self.send_json({'error':'Romantic and Modern designs require Ceremli Premium or Ultimate','upgrade_required':True},403)
+            return self._save_wedding_settings(a,d)
         if path=='/api/wedding/media':
             a=self.require(csrf=True)
             if not a:return
@@ -82,6 +90,14 @@ class CeremliLaunchApp(events.CeremliEventsApp):
             with core.conn() as c:c.execute('INSERT INTO wedding_media(wedding_id,media_json) VALUES(?,?) ON CONFLICT(wedding_id) DO UPDATE SET media_json=excluded.media_json',(a['id'],raw))
             return self.send_json({'ok':True})
         return super().do_PUT()
+
+    def _save_wedding_settings(self,a,d):
+        allowed_themes=('editorial','romantic','modern');allowed_accents=('sage','rose','blue','plum')
+        theme=d.get('theme','editorial') if d.get('theme','editorial') in allowed_themes else 'editorial';accent=d.get('accent','sage') if d.get('accent','sage') in allowed_accents else 'sage'
+        vals=(theme,accent,str(d.get('hero_title',''))[:120],str(d.get('schedule',''))[:3000],str(d.get('travel',''))[:3000],str(d.get('faq',''))[:3000],str(d.get('registry',''))[:3000],1 if d.get('show_story',True) else 0,1 if d.get('show_schedule',True) else 0,1 if d.get('show_travel',True) else 0,1 if d.get('show_faq',True) else 0,1 if d.get('show_registry',True) else 0,a['id'])
+        with core.conn() as c:
+            c.execute('INSERT OR IGNORE INTO wedding_settings(wedding_id) VALUES(?)',(a['id'],));c.execute('UPDATE wedding_settings SET theme=?,accent=?,hero_title=?,schedule=?,travel=?,faq=?,registry=?,show_story=?,show_schedule=?,show_travel=?,show_faq=?,show_registry=? WHERE wedding_id=?',vals)
+        return self.send_json({'ok':True})
 
     def do_POST(self):
         path=urllib.parse.urlparse(self.path).path
@@ -130,35 +146,16 @@ class CeremliLaunchApp(events.CeremliEventsApp):
                 event_ids=[r['id'] for r in c.execute('SELECT id FROM wedding_events WHERE wedding_id=?',(wid,)).fetchall()]
                 question_ids=[r['id'] for r in c.execute('SELECT id FROM rsvp_questions WHERE wedding_id=?',(wid,)).fetchall()]
                 if guest_ids:
-                    marks=','.join('?'*len(guest_ids))
-                    c.execute(f'DELETE FROM guest_event_invites WHERE guest_id IN ({marks})',guest_ids)
-                    c.execute(f'DELETE FROM rsvp_answers WHERE guest_id IN ({marks})',guest_ids)
-                    c.execute(f'DELETE FROM seating_assignments WHERE guest_id IN ({marks})',guest_ids)
-                    c.execute(f'DELETE FROM rsvp_history WHERE guest_id IN ({marks})',guest_ids)
+                    marks=','.join('?'*len(guest_ids));c.execute(f'DELETE FROM guest_event_invites WHERE guest_id IN ({marks})',guest_ids);c.execute(f'DELETE FROM rsvp_answers WHERE guest_id IN ({marks})',guest_ids);c.execute(f'DELETE FROM seating_assignments WHERE guest_id IN ({marks})',guest_ids);c.execute(f'DELETE FROM rsvp_history WHERE guest_id IN ({marks})',guest_ids)
                 if event_ids:
                     marks=','.join('?'*len(event_ids));c.execute(f'DELETE FROM guest_event_invites WHERE event_id IN ({marks})',event_ids)
                 if question_ids:
                     marks=','.join('?'*len(question_ids));c.execute(f'DELETE FROM rsvp_answers WHERE question_id IN ({marks})',question_ids)
-                c.execute('DELETE FROM invitations WHERE wedding_id=?',(wid,))
-                c.execute('DELETE FROM supplier_leads WHERE wedding_id=?',(wid,))
-                c.execute('DELETE FROM wedding_media WHERE wedding_id=?',(wid,))
-                c.execute('DELETE FROM wedding_settings WHERE wedding_id=?',(wid,))
-                c.execute('DELETE FROM budget_items WHERE wedding_id=?',(wid,))
-                c.execute('DELETE FROM budget_settings WHERE wedding_id=?',(wid,))
-                c.execute('DELETE FROM seating_assignments WHERE wedding_id=?',(wid,))
-                c.execute('DELETE FROM seating_tables WHERE wedding_id=?',(wid,))
-                c.execute('DELETE FROM rsvp_questions WHERE wedding_id=?',(wid,))
-                c.execute('DELETE FROM guest_event_invites WHERE event_id IN (SELECT id FROM wedding_events WHERE wedding_id=?)',(wid,))
-                c.execute('DELETE FROM wedding_events WHERE wedding_id=?',(wid,))
-                c.execute('DELETE FROM households WHERE wedding_id=?',(wid,))
-                c.execute('DELETE FROM tasks WHERE wedding_id=?',(wid,))
-                c.execute('DELETE FROM guests WHERE wedding_id=?',(wid,))
+                for table in ('invitations','supplier_leads','wedding_media','wedding_settings','budget_items','budget_settings','seating_assignments','seating_tables','rsvp_questions','wedding_events','households','tasks','guests'):
+                    c.execute(f'DELETE FROM {table} WHERE wedding_id=?',(wid,))
                 c.execute('DELETE FROM payments WHERE user_id=?',(uid,))
                 if c.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='pending_checkouts'").fetchone():c.execute('DELETE FROM pending_checkouts WHERE user_id=?',(uid,))
-                c.execute('DELETE FROM password_reset_tokens WHERE user_id=?',(uid,))
-                c.execute('DELETE FROM sessions WHERE user_id=?',(uid,))
-                c.execute('DELETE FROM weddings WHERE id=? AND user_id=?',(wid,uid))
-                c.execute('DELETE FROM users WHERE id=?',(uid,))
+                c.execute('DELETE FROM password_reset_tokens WHERE user_id=?',(uid,));c.execute('DELETE FROM sessions WHERE user_id=?',(uid,));c.execute('DELETE FROM weddings WHERE id=? AND user_id=?',(wid,uid));c.execute('DELETE FROM users WHERE id=?',(uid,))
             return self.session_response('',{'ok':True},expire=True)
         return super().do_POST()
 
