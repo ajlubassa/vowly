@@ -117,6 +117,49 @@ class CeremliLaunchApp(events.CeremliEventsApp):
                 if not u or not core.verify(current,u['password_hash']):return self.send_json({'error':'Current password is incorrect'},400)
                 c.execute('UPDATE users SET password_hash=? WHERE id=?',(core.pbkdf(new),a['user_id']));tok=self.cookies().get('vowly_session');current_token=tok.value if tok else '';c.execute('DELETE FROM sessions WHERE user_id=? AND token<>?',(a['user_id'],current_token))
             return self.send_json({'ok':True})
+        if path=='/api/account/delete':
+            a=self.require(csrf=True)
+            if not a:return
+            d=self.body();password=str(d.get('password',''));confirmation=str(d.get('confirmation',''))
+            if confirmation!='DELETE':return self.send_json({'error':'Type DELETE exactly to confirm account deletion'},400)
+            wid=a['id'];uid=a['user_id']
+            with core.conn() as c:
+                u=c.execute('SELECT password_hash FROM users WHERE id=?',(uid,)).fetchone()
+                if not u or not core.verify(password,u['password_hash']):return self.send_json({'error':'Password is incorrect'},400)
+                guest_ids=[r['id'] for r in c.execute('SELECT id FROM guests WHERE wedding_id=?',(wid,)).fetchall()]
+                event_ids=[r['id'] for r in c.execute('SELECT id FROM wedding_events WHERE wedding_id=?',(wid,)).fetchall()]
+                question_ids=[r['id'] for r in c.execute('SELECT id FROM rsvp_questions WHERE wedding_id=?',(wid,)).fetchall()]
+                if guest_ids:
+                    marks=','.join('?'*len(guest_ids))
+                    c.execute(f'DELETE FROM guest_event_invites WHERE guest_id IN ({marks})',guest_ids)
+                    c.execute(f'DELETE FROM rsvp_answers WHERE guest_id IN ({marks})',guest_ids)
+                    c.execute(f'DELETE FROM seating_assignments WHERE guest_id IN ({marks})',guest_ids)
+                    c.execute(f'DELETE FROM rsvp_history WHERE guest_id IN ({marks})',guest_ids)
+                if event_ids:
+                    marks=','.join('?'*len(event_ids));c.execute(f'DELETE FROM guest_event_invites WHERE event_id IN ({marks})',event_ids)
+                if question_ids:
+                    marks=','.join('?'*len(question_ids));c.execute(f'DELETE FROM rsvp_answers WHERE question_id IN ({marks})',question_ids)
+                c.execute('DELETE FROM invitations WHERE wedding_id=?',(wid,))
+                c.execute('DELETE FROM supplier_leads WHERE wedding_id=?',(wid,))
+                c.execute('DELETE FROM wedding_media WHERE wedding_id=?',(wid,))
+                c.execute('DELETE FROM wedding_settings WHERE wedding_id=?',(wid,))
+                c.execute('DELETE FROM budget_items WHERE wedding_id=?',(wid,))
+                c.execute('DELETE FROM budget_settings WHERE wedding_id=?',(wid,))
+                c.execute('DELETE FROM seating_assignments WHERE wedding_id=?',(wid,))
+                c.execute('DELETE FROM seating_tables WHERE wedding_id=?',(wid,))
+                c.execute('DELETE FROM rsvp_questions WHERE wedding_id=?',(wid,))
+                c.execute('DELETE FROM guest_event_invites WHERE event_id IN (SELECT id FROM wedding_events WHERE wedding_id=?)',(wid,))
+                c.execute('DELETE FROM wedding_events WHERE wedding_id=?',(wid,))
+                c.execute('DELETE FROM households WHERE wedding_id=?',(wid,))
+                c.execute('DELETE FROM tasks WHERE wedding_id=?',(wid,))
+                c.execute('DELETE FROM guests WHERE wedding_id=?',(wid,))
+                c.execute('DELETE FROM payments WHERE user_id=?',(uid,))
+                if c.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='pending_checkouts'").fetchone():c.execute('DELETE FROM pending_checkouts WHERE user_id=?',(uid,))
+                c.execute('DELETE FROM password_reset_tokens WHERE user_id=?',(uid,))
+                c.execute('DELETE FROM sessions WHERE user_id=?',(uid,))
+                c.execute('DELETE FROM weddings WHERE id=? AND user_id=?',(wid,uid))
+                c.execute('DELETE FROM users WHERE id=?',(uid,))
+            return self.session_response('',{'ok':True},expire=True)
         return super().do_POST()
 
 if __name__=='__main__':
