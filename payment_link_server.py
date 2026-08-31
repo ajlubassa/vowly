@@ -9,6 +9,11 @@ import stripe_checkout_server as stripe_hardened
 
 PAYMENT_LINKS={'premium':'https://buy.stripe.com/test_8x214n2NH7Qz0do0ZQ6EU00','ultimate':'https://buy.stripe.com/test_eVq00jdsl3AjgcmcIy6EU01'}
 TOKEN_SECRET=(os.getenv('STRIPE_WEBHOOK_SECRET','') or os.getenv('STRIPE_SECRET_KEY','')).strip()
+MEDIA_LIMITS={
+    'free':{'party':8,'gallery':8,'bytes':6_000_000},
+    'premium':{'party':20,'gallery':24,'bytes':12_000_000},
+    'ultimate':{'party':40,'gallery':50,'bytes':24_000_000},
+}
 
 def ensure_pending_table():
     with core.conn() as c:
@@ -56,6 +61,22 @@ def send_payment_confirmation(email,plan,session_id):
         print(f'[stripe-link] confirmation email error={type(e).__name__}',flush=True)
 
 class PaymentLinkApp(launch.CeremliLaunchApp):
+    def do_PUT(self):
+        path=urllib.parse.urlparse(self.path).path
+        if path!='/api/wedding/media':return super().do_PUT()
+        a=self.require(csrf=True)
+        if not a:return
+        d=self.body();party=d.get('party') or [];gallery=d.get('gallery') or []
+        if not isinstance(party,list) or not isinstance(gallery,list):return self.send_json({'error':'Invalid wedding media'},400)
+        plan=str(a.get('plan') or 'free').lower();limits=MEDIA_LIMITS.get(plan,MEDIA_LIMITS['free'])
+        if len(party)>limits['party'] or len(gallery)>limits['gallery']:
+            return self.send_json({'error':f"Your {plan.capitalize()} plan allows up to {limits['party']} wedding party members and {limits['gallery']} gallery photos",'upgrade_required':plan!='ultimate'},403)
+        raw=json.dumps({'party':party,'gallery':gallery},separators=(',',':'))
+        if len(raw.encode('utf-8'))>limits['bytes']:
+            return self.send_json({'error':'Wedding photos are too large. Please use fewer or smaller images.'},413)
+        with core.conn() as c:c.execute('INSERT INTO wedding_media(wedding_id,media_json) VALUES(?,?) ON CONFLICT(wedding_id) DO UPDATE SET media_json=excluded.media_json',(a['id'],raw))
+        return self.send_json({'ok':True,'limits':{'party':limits['party'],'gallery':limits['gallery']}})
+
     def do_POST(self):
         path=urllib.parse.urlparse(self.path).path
         if path=='/api/billing/checkout':
