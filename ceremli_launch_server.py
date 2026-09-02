@@ -60,6 +60,30 @@ class CeremliLaunchApp(events.CeremliEventsApp):
             try:data=json.loads(r['media_json']) if r else {'party':[],'gallery':[]}
             except:data={'party':[],'gallery':[]}
             return self.send_json(data)
+        if path=='/api/diagnostics/payment-status':
+            # TEMPORARY DEBUGGING ENDPOINT.
+            # Added to investigate why demo@vowly.local's premium upgrade (from the
+            # £39 sandbox payment reconciliation) was not reflected in /api/me.
+            # Read-only, requires an authenticated session. Remove once resolved.
+            a=self.require()
+            if not a:return
+            with core.conn() as c:
+                users=[]
+                for u in rows(c,'SELECT id,email,plan,created_at FROM users ORDER BY id'):
+                    email=u['email']
+                    users.append({
+                        'id':u['id'],
+                        'email':email if str(email).strip().lower()=='demo@vowly.local' else '[redacted]',
+                        'plan':u['plan'],
+                        'created_at':u['created_at'],
+                    })
+                payments=rows(c,'SELECT user_id,plan,stripe_session_id,status,created_at FROM payments ORDER BY id')
+            return self.send_json({
+                'note':'TEMPORARY diagnostic endpoint - remove after payment reconciliation issue is resolved.',
+                'requested_by':{'user_id':a['user_id'],'email':a['email']},
+                'users':users,
+                'payments':payments,
+            })
         if path=='/api/account/export':
             a=self.require()
             if not a:return
